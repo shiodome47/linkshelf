@@ -37,6 +37,7 @@ import { indexedDbStorage } from './storage/indexedDb'
 import type { LinkShelfStorage } from './storage/types'
 import { groupLinksByCategory, type FetchTitle } from './store'
 import type { Category, Link } from './types'
+import { ThemeProvider, type LinkShelfTheme } from './theme'
 import { cn } from './utils/cn'
 
 /** カード 1 列の最小幅（px）。これをもとに列数を決める */
@@ -50,6 +51,8 @@ export interface LinkShelfProps {
   fetchTitle?: FetchTitle
   /** 見出し（既定は「リンク集」） */
   title?: string
+  /** 明るさ。light / dark / system（端末の設定に合わせる。既定） */
+  theme?: LinkShelfTheme
   /** いちばん外側の要素に足す class */
   className?: string
 }
@@ -62,17 +65,19 @@ export interface LinkShelfProps {
  * - リンクはドラッグで並び替え・別のカテゴリへ移動、カードもドラッグで並び替えられる
  * - カードの「整理する」から、名前の変更・まとめて移動／削除・並べ替えができる
  */
-export function LinkShelf({ storage, fetchTitle, title, className }: LinkShelfProps) {
+export function LinkShelf({ storage, fetchTitle, title, theme = 'system', className }: LinkShelfProps) {
   // 保存先は最初の 1 回だけ決める（描くたびに IndexedDB を開き直さないように）
   const [store] = useState(() => storage ?? indexedDbStorage())
   return (
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
-      <Shelf title={title} className={className} />
+      <ThemeProvider value={theme}>
+        <Shelf title={title} theme={theme} className={className} />
+      </ThemeProvider>
     </LinkShelfProvider>
   )
 }
 
-function Shelf({ title = 'リンク集', className }: { title?: string; className?: string }) {
+function Shelf({ title = 'リンク集', theme, className }: { title?: string; theme: LinkShelfTheme; className?: string }) {
   const { categories, links, loaded, loadAll, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
     useLinkShelf()
 
@@ -268,7 +273,7 @@ function Shelf({ title = 'リンク集', className }: { title?: string; classNam
     editingLink !== null || deletingLinks !== null || deletingCategory !== null || retitling !== null
 
   return (
-    <div className={cn('linkshelf', className)}>
+    <div className={cn('linkshelf', className)} data-theme={theme}>
     <div className="bg-neutral-950 text-neutral-100">
       {/* ヘッダー */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-neutral-800 px-4 py-3 sm:px-6">

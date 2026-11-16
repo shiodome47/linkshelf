@@ -1,5 +1,90 @@
 /*
  * linkshelf の見た目。.linkshelf の中だけに効く。
+ *
+ * 色は下の変数で決まる。組み込む側は、.linkshelf { --ls-accent: #2563eb; } のように上書きして色を合わせられる。
+ *   --ls-bg      画面の背景
+ *   --ls-card    カードの背景
+ *   --ls-border  枠線
+ *   --ls-text    文字
+ *   --ls-muted   うすい文字
+ *   --ls-accent  決定のボタン・ドラッグの線
+ *   --ls-danger  削除
+ * --ls-n-… は、その間の濃さ（ほとんどの場合、上の 7 つだけ変えればよい）。
+ */
+
+/* ダーク表示（既定）。:where() で弱くしておき、組み込む側の .linkshelf { --ls-… } が必ず勝つようにする */
+:where(.linkshelf) {
+  --ls-bg: #0a0a0a;
+  --ls-card: #171717;
+  --ls-border: #262626;
+  --ls-text: #f5f5f5;
+  --ls-muted: #737373;
+  --ls-accent: #0d9488;
+  --ls-accent-hover: #14b8a6;
+  --ls-accent-text: #2dd4bf;
+  --ls-danger: #f87171;
+  --ls-danger-bg: #450a0a;
+
+  --ls-n-50: #fafafa;
+  --ls-n-100: var(--ls-text);
+  --ls-n-200: #e5e5e5;
+  --ls-n-300: #d4d4d4;
+  --ls-n-400: #a3a3a3;
+  --ls-n-500: var(--ls-muted);
+  --ls-n-600: #525252;
+  --ls-n-700: #404040;
+  --ls-n-800: var(--ls-border);
+  --ls-n-900: var(--ls-card);
+  --ls-n-950: var(--ls-bg);
+  color-scheme: dark;
+}
+
+/* ライト表示（theme="light"、または theme="system" で端末がライトのとき） */
+:where(.linkshelf[data-theme='light']) {
+  --ls-bg: #f5f5f5;
+  --ls-card: #ffffff;
+  --ls-border: #e5e5e5;
+  --ls-text: #171717;
+  --ls-muted: #737373;
+  --ls-accent: #0d9488;
+  --ls-accent-hover: #0f766e;
+  --ls-accent-text: #0f766e;
+  --ls-danger: #dc2626;
+  --ls-danger-bg: #fee2e2;
+
+  --ls-n-50: #0a0a0a;
+  --ls-n-200: #262626;
+  --ls-n-300: #404040;
+  --ls-n-400: #525252;
+  --ls-n-600: #a3a3a3;
+  --ls-n-700: #d4d4d4;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :where(.linkshelf[data-theme='system']) {
+    --ls-bg: #f5f5f5;
+    --ls-card: #ffffff;
+    --ls-border: #e5e5e5;
+    --ls-text: #171717;
+    --ls-muted: #737373;
+    --ls-accent: #0d9488;
+    --ls-accent-hover: #0f766e;
+    --ls-accent-text: #0f766e;
+    --ls-danger: #dc2626;
+    --ls-danger-bg: #fee2e2;
+
+    --ls-n-50: #0a0a0a;
+    --ls-n-200: #262626;
+    --ls-n-300: #404040;
+    --ls-n-400: #525252;
+    --ls-n-600: #a3a3a3;
+    --ls-n-700: #d4d4d4;
+    color-scheme: light;
+  }
+}
+
+/*
  * Tailwind の初期化（preflight）の代わりに、部品の中で必要なものだけを整える。
  * :where() で包んで弱くしておき、Tailwind のクラスが必ず勝つようにする。
  */

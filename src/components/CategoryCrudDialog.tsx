@@ -114,7 +114,7 @@ export function CategoryCrudDialog({
                   'h-6 w-6 rounded-full transition-transform',
                   opt.bgClass,
                   color === opt.value
-                    ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900 scale-110'
+                    ? 'ring-2 ring-neutral-400 ring-offset-2 ring-offset-neutral-900 scale-110'
                     : 'opacity-60 hover:opacity-100',
                 )}
                 aria-label={opt.label}

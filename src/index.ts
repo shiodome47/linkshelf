@@ -9,6 +9,7 @@ export type { Category, Link } from './types'
 
 // 部品
 export { LinkShelf, type LinkShelfProps } from './LinkShelf'
+export type { LinkShelfTheme } from './theme'
 
 // 保存先の窓口
 export type { LinkShelfStorage } from './storage/types'

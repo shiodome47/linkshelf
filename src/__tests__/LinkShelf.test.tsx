@@ -91,3 +91,17 @@ describe('<LinkShelf />', () => {
     expect(container.firstElementChild).toHaveClass('linkshelf', 'mine')
   })
 })
+
+describe('テーマ', () => {
+  it('theme を付けないと system（端末の設定に合わせる）', () => {
+    const { container } = render(<LinkShelf storage={memoryStorage()} />)
+    expect(container.firstElementChild).toHaveAttribute('data-theme', 'system')
+  })
+
+  it('ダイアログにも同じテーマが付く（部品の外に出ても色がそろう）', async () => {
+    render(<LinkShelf storage={memoryStorage()} theme="light" />)
+    fireEvent.click(await screen.findByRole('button', { name: /カテゴリを追加/ }))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.closest('.linkshelf')).toHaveAttribute('data-theme', 'light')
+  })
+})

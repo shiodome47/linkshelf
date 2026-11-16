@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '../../utils/cn'
+import { useTheme } from '../../theme'
 
 type DialogSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -31,6 +32,7 @@ const sizeClasses: Record<DialogSize, string> = {
 export function Dialog({ isOpen, onClose, title, children, size = 'md' }: DialogProps) {
   // onClose を ref で保持して Escape ハンドラの依存配列を安定させる
   const titleId = useId()
+  const theme = useTheme()
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -57,7 +59,7 @@ export function Dialog({ isOpen, onClose, title, children, size = 'md' }: Dialog
   if (!isOpen) return null
 
   return createPortal(
-    <div className="linkshelf">
+    <div className="linkshelf" data-theme={theme}>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* バックドロップ */}
       <div
