@@ -429,7 +429,7 @@ function RenameInput({ link, onDone }: { link: Link; onDone: (title: string) => 
           role="status"
           aria-label={m.fetchingTitle}
           title={m.fetchingTitle}
-          className="h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-neutral-700 border-t-neutral-400"
+          className="h-3.5 w-3.5 flex-shrink-0 animate-ls-spin rounded-full border-2 border-neutral-700 border-t-neutral-400"
         />
       )}
     </div>

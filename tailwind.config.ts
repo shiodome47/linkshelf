@@ -16,10 +16,20 @@ export default {
   // 組み込む側のページを崩さないように:
   // - ブラウザの見た目の初期化（preflight）は使わない（src/style.css で .linkshelf の中だけ整える）
   // - すべてのクラスを .linkshelf の中だけで効くようにする
+  // - .container（important が効かず、アプリ全体に効いてしまう）は使わない
+  // - 変数の初期値も .linkshelf の中だけにする（postcss.config.js）
+  // ビルドしたあと、scripts/check-css-scope.mjs で、アプリ全体に効く書き方が無いか確かめる
   important: '.linkshelf',
-  corePlugins: { preflight: false },
+  corePlugins: { preflight: false, container: false },
   theme: {
     extend: {
+      // アニメーションの名前は ls- で始める（組み込む側の @keyframes spin などとぶつからないように）
+      keyframes: {
+        'ls-spin': { to: { transform: 'rotate(360deg)' } },
+      },
+      animation: {
+        'ls-spin': 'ls-spin 1s linear infinite',
+      },
       colors: {
         neutral,
         accent: {
