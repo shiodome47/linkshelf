@@ -1,6 +1,6 @@
 {
   "name": "linkshelf",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A React component for organizing links, one-line notes and longer texts into cards on a shelf.",
   "keywords": [
     "react",

@@ -12,7 +12,7 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { FolderPlus, Link as LinkGlyph, RefreshCw, Search, X } from 'lucide-react'
+import { FolderPlus, Link as LinkGlyph, RefreshCw, Search, Star, X } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from './components/ui/Button'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
@@ -109,6 +109,10 @@ function Shelf({
 
   const [query, setQuery] = useState('')
   const searching = query.trim().length > 0
+  /** お気に入り（星）のリンクだけを表示する */
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  /** 絞り込み中（検索・お気に入りだけ）は、並べ替えやその場での追加をさせない */
+  const filtering = searching || favoritesOnly
 
   // ─── ダイアログ状態 ───────────────────────────────────────
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
@@ -130,8 +134,10 @@ function Shelf({
     const q = query.trim().toLowerCase()
     return sortedCategories
       .map((category) => {
-        const all = linksByCategory.get(category.id) ?? []
-        if (!q) return { category, links: all }
+        const inCategory = linksByCategory.get(category.id) ?? []
+        const all = favoritesOnly ? inCategory.filter((l) => l.isFavorited) : inCategory
+        // お気に入りだけのときは、お気に入りが 1 つも無いカードを出さない
+        if (!q) return favoritesOnly ? { category, links: all, show: all.length > 0 } : { category, links: all }
         const categoryHit = category.name.toLowerCase().includes(q)
         const hits = all.filter(
           (l) =>
@@ -141,10 +147,11 @@ function Shelf({
             l.description.toLowerCase().includes(q) ||
             l.tags.some((t) => t.toLowerCase().includes(q)),
         )
-        return { category, links: categoryHit && hits.length === 0 ? all : hits, show: categoryHit || hits.length > 0 }
+        const show = favoritesOnly ? hits.length > 0 || (categoryHit && all.length > 0) : categoryHit || hits.length > 0
+        return { category, links: categoryHit && hits.length === 0 ? all : hits, show }
       })
       .filter((v) => !('show' in v) || v.show)
-  }, [sortedCategories, linksByCategory, query])
+  }, [sortedCategories, linksByCategory, query, favoritesOnly])
 
   // ─── 段組み（列数は画面幅から決め、カードを低い列から順に詰める） ───
   const [columnCount, setColumnCount] = useState(1)
@@ -299,7 +306,8 @@ function Shelf({
       <div className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-neutral-800 px-4 py-3 sm:px-6">
         <h2 className="text-sm font-semibold text-neutral-200">{title ?? m.shelfTitle}</h2>
         {categories.length > 0 && (
-          <div className="relative order-last w-full sm:order-none sm:ml-4 sm:w-64">
+          <div className="order-last flex w-full items-center gap-2 sm:order-none sm:ml-4 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
             <input
               type="search"
@@ -320,6 +328,22 @@ function Shelf({
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setFavoritesOnly((v) => !v)}
+            aria-pressed={favoritesOnly}
+            aria-label={m.favoritesOnly}
+            title={favoritesOnly ? m.showAll : m.favoritesOnly}
+            className={cn(
+              'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border transition-colors',
+              favoritesOnly
+                ? 'border-amber-400/60 bg-amber-400/10 text-amber-400'
+                : 'border-neutral-800 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300',
+            )}
+          >
+            <Star className={cn('h-3.5 w-3.5', favoritesOnly && 'fill-amber-400')} />
+          </button>
           </div>
         )}
         <div className="ml-auto flex items-center gap-2">
@@ -353,8 +377,10 @@ function Shelf({
             description={m.emptyDescription}
             action={{ label: m.addCategory, onClick: () => setAddCategoryOpen(true) }}
           />
-        ) : searching && visible.length === 0 ? (
-          <p className="py-16 text-center text-sm text-neutral-500">{m.noMatch(query.trim())}</p>
+        ) : filtering && visible.length === 0 ? (
+          <p className="py-16 text-center text-sm text-neutral-500">
+            {searching ? m.noMatch(query.trim()) : m.noFavorites}
+          </p>
         ) : (
           <DndContext
             sensors={sensors}
@@ -373,7 +399,7 @@ function Shelf({
                       key={category.id}
                       category={category}
                       links={catLinks}
-                      readOnly={searching}
+                      readOnly={filtering}
                       indicator={indicator}
                       cardDropEdge={cardTarget?.kind === 'card' && cardTarget.categoryId === category.id ? cardTarget.position : null}
                       wasDragging={wasDragging}
@@ -382,7 +408,7 @@ function Shelf({
                     />
                   ))}
                   {/* 列の下の空いているところ: カードを落とすと、この列のいちばん下へ */}
-                  <ColumnEnd column={i} disabled={searching} marked={cardTarget?.kind === 'end' && cardTarget.column === i} />
+                  <ColumnEnd column={i} disabled={filtering} marked={cardTarget?.kind === 'end' && cardTarget.column === i} />
                 </div>
               ))}
             </div>

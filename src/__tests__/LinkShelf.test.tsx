@@ -166,3 +166,49 @@ describe('名前を取る窓口が無いとき', () => {
     expect(screen.queryByRole('button', { name: 'URL から名前を取得' })).not.toBeInTheDocument()
   })
 })
+
+describe('お気に入りだけ表示', () => {
+  const withFavorites = () =>
+    memoryStorage({
+      categories: [cat('c1', '仕事', 0), cat('c2', '趣味', 1)],
+      links: [
+        link('l1', 'c1', 'Example', 'https://example.com/', { isFavorited: true }),
+        link('l2', 'c1', 'ふつうのリンク', 'https://example.net/', { order: 1 }),
+        link('l3', 'c2', '料理のページ', 'https://example.org/recipe'),
+      ],
+    })
+
+  it('星のボタンを押すと、お気に入りのリンクと、そのカードだけが残る。もう一度押すと元にもどる', async () => {
+    render(<LinkShelf storage={withFavorites()} />)
+    await screen.findByText('ふつうのリンク')
+    const toggle = screen.getByRole('button', { name: 'お気に入りだけ表示' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Example')).toBeInTheDocument()
+    expect(screen.queryByText('ふつうのリンク')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '趣味' })).not.toBeInTheDocument()
+    // 絞り込み中は、その場での追加を出さない
+    expect(screen.queryByRole('button', { name: /リンク・テキストを追加/ })).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+    expect(screen.getByText('ふつうのリンク')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '趣味' })).toBeInTheDocument()
+  })
+
+  it('検索と一緒に使える', async () => {
+    render(<LinkShelf storage={withFavorites()} />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: 'お気に入りだけ表示' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'リンクを検索' }), { target: { value: '料理' } })
+    expect(screen.getByText('「料理」に一致するリンクはありません')).toBeInTheDocument()
+  })
+
+  it('お気に入りが 1 つも無いときは、そう知らせる', async () => {
+    render(<LinkShelf storage={sample()} />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: 'お気に入りだけ表示' }))
+    expect(screen.getByText(/お気に入りのリンクはまだありません/)).toBeInTheDocument()
+  })
+})
