@@ -105,3 +105,10 @@ describe('テーマ', () => {
     expect(dialog.closest('.linkshelf')).toHaveAttribute('data-theme', 'light')
   })
 })
+
+describe('見出しに足すもの（actions）', () => {
+  it('見出しの右に、渡したものを出す', async () => {
+    render(<LinkShelf storage={memoryStorage()} actions={<button type="button">わたしのボタン</button>} />)
+    expect(await screen.findByRole('button', { name: 'わたしのボタン' })).toBeInTheDocument()
+  })
+})

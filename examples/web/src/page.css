@@ -2,7 +2,6 @@
 :root {
   color-scheme: dark;
   --page-bg: #0a0a0a;
-  --page-muted: #737373;
 }
 :root[data-theme='light'] {
   color-scheme: light;
@@ -20,24 +19,27 @@ body {
   min-height: 100%;
   background: var(--page-bg);
 }
-.page-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  padding: 24px 16px 32px;
-  font: 12px/1.5 ui-sans-serif, system-ui, sans-serif;
-  color: var(--page-muted);
-}
-.page-footer label {
+
+/* 見出しの右の、表示の切り替えボタン（部品の中に置くので、部品の色の変数が使える） */
+.linkshelf .theme-button {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--ls-muted);
+  transition: background-color 0.15s, color 0.15s;
 }
-.page-footer select {
-  font: inherit;
+.linkshelf .theme-button:hover {
+  background: var(--ls-border);
+  color: var(--ls-text);
 }
-.page-footer a {
-  color: inherit;
-  margin-left: auto;
+.linkshelf .theme-button:focus-visible {
+  outline: 2px solid var(--ls-accent);
+  outline-offset: 1px;
+}
+.linkshelf .theme-button svg {
+  width: 16px;
+  height: 16px;
 }
