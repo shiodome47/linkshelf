@@ -49,7 +49,8 @@ export function App() {
 | `storage` | 保存先（下の「保存先を変える」） | `indexedDbStorage()` |
 | `fetchTitle` | ページの名前を取る関数 `(url) => Promise<string \| null>` | なし（名前は URL から作る） |
 | `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
-| `title` | 見出し | `'リンク集'` |
+| `locale` | 画面の言葉。`'ja'`（日本語）/ `'en'`（英語） | `'ja'` |
+| `title` | 見出し | `'リンク集'`（英語では `'Links'`） |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -79,6 +80,22 @@ const myStorage: LinkShelfStorage = {
   putLink: async (link) => {},
   deleteLinks: async (ids) => {},
   // bulkPut は無くてもよい（無ければ 1 件ずつ put する）
+  // subscribe も無くてもよい（下の「ほかの端末の変更を出す」）
+}
+```
+
+#### ほかの端末の変更を出す（同期するとき）
+
+保存先に `subscribe` を付けると、中身が外から変わったとき（同期でほかの端末の変更が届いたときなど）に、画面を読み直します。
+
+```ts
+const syncedStorage: LinkShelfStorage = {
+  ...myStorage,
+  // 変わったら onChange を呼ぶ。戻り値は、知らせをやめる関数
+  subscribe: (onChange) => {
+    const stop = mySync.onRemoteChange(onChange)
+    return stop
+  },
 }
 ```
 
@@ -132,7 +149,7 @@ const myStorage: LinkShelfStorage = {
 ### 見本のページ
 
 [`examples/web`](./examples/web) に、この部品を使った単独のアプリがあります（https://linkshelf-chi.vercel.app ）。
-データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。
+データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
 
 ```bash
 npm run build:example
@@ -154,7 +171,7 @@ Vercel に置くときは、プロジェクトの Root Directory を `examples/w
 - Longer texts ("Write text", "Drop a .txt") with a full-text viewer
 - Favorites (star), search, site icons, light / dark theme
 
-The built-in labels are in Japanese.
+Labels are available in Japanese and English (`locale="en"`).
 
 ### Install
 
@@ -171,7 +188,7 @@ import { LinkShelf } from 'linkshelf'
 import 'linkshelf/style.css'
 
 export function App() {
-  return <LinkShelf />
+  return <LinkShelf locale="en" />
 }
 ```
 
@@ -184,7 +201,8 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `storage` | Where to save data (see below) | `indexedDbStorage()` |
 | `fetchTitle` | `(url) => Promise<string \| null>` that returns a page title | none (titles come from the URL) |
 | `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
-| `title` | Heading | `'リンク集'` |
+| `locale` | Language of the labels: `'ja'` (Japanese) / `'en'` (English) | `'ja'` |
+| `title` | Heading | `'リンク集'` (`'Links'` in English) |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 
@@ -201,6 +219,7 @@ import { LinkShelf, indexedDbStorage, memoryStorage } from 'linkshelf'
 
 To use your own backend, pass an object that implements `LinkShelfStorage`
 (`loadAll`, `putCategory`, `deleteCategory`, `putLink`, `deleteLinks`, and optionally `bulkPut`).
+Add an optional `subscribe(onChange)` that returns an unsubscribe function, and the shelf reloads whenever your storage changes from outside (for example, when another device syncs).
 
 ### Page titles
 

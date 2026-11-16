@@ -20,6 +20,7 @@ import { isOneLineText, normalizeLinkInput, oneLineTitle } from '../linkUtils'
 import { useLinkShelf } from '../context'
 import { LinkIcon, SiteIcon } from './SiteIcon'
 import { TextViewer } from './TextViewer'
+import { useMessages } from '../i18n'
 import { readTextFile, TEXT_ACCEPT } from '../textFile'
 
 interface CategoryWidgetProps {
@@ -53,6 +54,7 @@ export function CategoryWidget({
   onEditLink,
 }: CategoryWidgetProps) {
   const { addLinkFromUrl, addLink, updateLink } = useLinkShelf()
+  const m = useMessages()
   const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const cardDrag = useDraggable({
@@ -103,8 +105,8 @@ export function CategoryWidget({
           <button
             ref={cardDrag.setActivatorNodeRef}
             type="button"
-            aria-label={`「${category.name}」を並び替える`}
-            title="ドラッグでカードを並び替え"
+            aria-label={m.reorderCard(category.name)}
+            title={m.reorderCardHint}
             className="absolute left-0.5 top-3.5 flex h-6 w-4 cursor-grab touch-none items-center justify-center text-neutral-600 transition-opacity hover:text-neutral-300 md:opacity-0 md:group-hover/card:opacity-100"
             {...cardDrag.attributes}
             {...cardDrag.listeners}
@@ -123,8 +125,8 @@ export function CategoryWidget({
         <button
           type="button"
           onClick={() => onManage(category)}
-          aria-label={`「${category.name}」を整理する`}
-          title="整理する（名前・並び替え・移動・削除）"
+          aria-label={m.manageCard(category.name)}
+          title={m.manageCardHint}
           className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-200 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100"
         >
           <Settings2 className="h-3.5 w-3.5" />
@@ -140,7 +142,7 @@ export function CategoryWidget({
               listIndicator ? 'border-neutral-500' : 'border-neutral-800',
             )}
           >
-            {readOnly ? '一致するリンクはありません' : 'リンクはまだありません'}
+            {readOnly ? m.noLinksMatch : m.noLinksYet}
           </p>
         )}
         <ul>
@@ -180,7 +182,7 @@ export function CategoryWidget({
           }}
           onWriteText={async () => {
             // 空のテキストを作って、そのまま書く画面を開く（何も書かずに閉じれば消える）
-            const link = await addLink({ categoryId: category.id, title: '新しいテキスト', url: '', kind: 'text', text: '' })
+            const link = await addLink({ categoryId: category.id, title: m.newText, url: '', kind: 'text', text: '' })
             onEditLink(link)
           }}
         />
@@ -203,6 +205,7 @@ interface LinkRowProps {
 
 function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onRenameDone }: LinkRowProps) {
   const { updateLink, recordAccess } = useLinkShelf()
+  const m = useMessages()
   const isText = link.kind === 'text'
   const href = isText ? undefined : safeExternalUrl(link.url)
   const [viewing, setViewing] = useState(false)
@@ -257,7 +260,7 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
           {isText ? (
             <button
               type="button"
-              title={`${link.title}\n（テキスト）${oneLine && !readOnly ? '\nダブルクリックで書き換え' : ''}${link.description ? `\n\n${link.description}` : ''}`}
+              title={m.textTooltip(link.title, oneLine && !readOnly, link.description)}
               onClick={() => {
                 if (wasDragging()) return
                 const open = () => {
@@ -305,9 +308,9 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
             <button
               type="button"
               onClick={() => void updateLink(link.id, { isFavorited: !link.isFavorited })}
-              aria-label={link.isFavorited ? `「${link.title}」のお気に入りを解除` : `「${link.title}」をお気に入りに追加`}
+              aria-label={link.isFavorited ? m.unfavorite(link.title) : m.favorite(link.title)}
               aria-pressed={link.isFavorited}
-              title={link.isFavorited ? 'お気に入りを解除' : 'お気に入り'}
+              title={link.isFavorited ? m.unfavoriteHint : m.favoriteHint}
               className={cn(
                 'h-6 w-6 items-center justify-center rounded transition-opacity',
                 link.isFavorited
@@ -321,8 +324,8 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
               <button
                 type="button"
                 onClick={() => onEdit(link)}
-                aria-label={`「${link.title}」を編集`}
-                title="編集"
+                aria-label={m.editItem(link.title)}
+                title={m.edit}
                 className="hidden h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-300 md:flex md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
               >
                 <Pencil className="h-3 w-3" />
@@ -338,6 +341,7 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
 
 /** 1 行のテキストを、その場で書き換える入力欄（Enter・外を押すと保存、Esc でやめる） */
 function OneLineTextInput({ link, onDone }: { link: Link; onDone: (text: string) => void }) {
+  const m = useMessages()
   const [value, setValue] = useState(link.text ?? '')
   const ref = useRef<HTMLInputElement>(null)
   const done = useRef(false)
@@ -365,7 +369,7 @@ function OneLineTextInput({ link, onDone }: { link: Link; onDone: (text: string)
           if (e.key === 'Escape') finish(link.text ?? '')
         }}
         onBlur={() => finish(value)}
-        aria-label="1 行のテキスト"
+        aria-label={m.oneLineText}
         className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
     </div>
@@ -377,6 +381,7 @@ function RenameInput({ link, onDone }: { link: Link; onDone: (title: string) => 
   const [value, setValue] = useState(link.title)
   const [edited, setEdited] = useState(false)
   const fetching = useLinkShelf((s) => s.fetchingTitleIds.includes(link.id))
+  const m = useMessages()
   const ref = useRef<HTMLInputElement>(null)
   const done = useRef(false)
 
@@ -414,16 +419,16 @@ function RenameInput({ link, onDone }: { link: Link; onDone: (title: string) => 
           if (e.key === 'Escape') finish(link.title)
         }}
         onBlur={() => finish(value)}
-        aria-label="リンクの名前"
+        aria-label={m.linkName}
         aria-busy={fetching && !edited}
-        placeholder="名前"
+        placeholder={m.name}
         className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
       {fetching && !edited && (
         <span
           role="status"
-          aria-label="ページの名前を取得中"
-          title="ページの名前を取得中"
+          aria-label={m.fetchingTitle}
+          title={m.fetchingTitle}
           className="h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-neutral-700 border-t-neutral-400"
         />
       )}
@@ -442,6 +447,7 @@ export function QuickAdd({
   onAddText: (t: { title: string; text: string }) => Promise<void>
   onWriteText: () => Promise<void>
 }) {
+  const m = useMessages()
   const [showTip, setShowTip] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -478,12 +484,12 @@ export function QuickAdd({
   const pickText = async (file: File | undefined) => {
     if (!file) return
     try {
-      await onAddText(await readTextFile(file))
+      await onAddText(await readTextFile(file, m))
       setValue('')
       setError('')
       setOpen(false)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'ファイルを読み込めませんでした')
+      setError(e instanceof Error ? e.message : m.fileReadFailed)
     }
   }
 
@@ -496,7 +502,7 @@ export function QuickAdd({
           className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
         >
           <Plus className="h-4 w-4" />
-          リンク・テキストを追加
+          {m.addLinkOrText}
         </button>
       </div>
     )
@@ -517,9 +523,9 @@ export function QuickAdd({
           if (e.relatedTarget && e.currentTarget.parentElement?.contains(e.relatedTarget)) return
           if (!value.trim() && !error) setOpen(false)
         }}
-        aria-label="追加するリンクの URL か、1 行のテキスト"
+        aria-label={m.quickAddLabel}
         aria-invalid={error ? true : undefined}
-        placeholder="URL か 1 行のテキストを入れて Enter"
+        placeholder={m.quickAddPlaceholder}
         className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
       {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
@@ -544,7 +550,7 @@ export function QuickAdd({
           className="flex items-center gap-1.5 rounded-md px-1 py-1 text-xs text-neutral-400 transition-colors hover:text-neutral-200"
         >
           <FilePlus className="h-3.5 w-3.5" aria-hidden="true" />
-          テキストを書く
+          {m.writeText}
         </button>
         <button
           type="button"
@@ -552,7 +558,7 @@ export function QuickAdd({
           className="flex items-center gap-1.5 rounded-md px-1 py-1 text-xs text-neutral-400 transition-colors hover:text-neutral-200"
         >
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-          .txt を置く
+          {m.dropTxt}
         </button>
         {/* PDF・画像の置き方（マウスを乗せて少しすると出る。スマホは押すと出る） */}
         <span className="group/tip relative ml-auto">
@@ -560,7 +566,7 @@ export function QuickAdd({
             type="button"
             onClick={() => setShowTip((v) => !v)}
             aria-expanded={showTip}
-            aria-label="PDF・画像などを置くには"
+            aria-label={m.filesTipLabel}
             className="flex h-6 w-6 items-center justify-center rounded-full text-neutral-500 transition-colors hover:text-neutral-300"
           >
             <Info className="h-3.5 w-3.5" aria-hidden="true" />
@@ -574,8 +580,8 @@ export function QuickAdd({
                 : 'invisible opacity-0 md:group-hover/tip:visible md:group-hover/tip:opacity-100 md:group-hover/tip:delay-500',
             )}
           >
-            <span className="mb-1 block font-semibold text-neutral-200">PDF・画像などは？</span>
-            クラウドのフォルダにまとめて置き、その共有リンクを上に貼ると、どの端末からでも開けます。
+            <span className="mb-1 block font-semibold text-neutral-200">{m.filesTipTitle}</span>
+            {m.filesTipBody}
           </span>
         </span>
       </div>

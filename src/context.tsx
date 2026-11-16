@@ -28,7 +28,7 @@ export function LinkShelfStoreProvider({ store, children }: { store: LinkShelfSt
 /** いまの <LinkShelf> のストアそのもの */
 export function useLinkShelfStoreApi(): LinkShelfStore {
   const store = useContext(StoreContext)
-  if (!store) throw new Error('useLinkShelf は <LinkShelf> の中で使ってください')
+  if (!store) throw new Error('[linkshelf] useLinkShelf must be used inside <LinkShelf>（<LinkShelf> の中で使ってください）')
   return store
 }
 

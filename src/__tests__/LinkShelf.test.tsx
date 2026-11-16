@@ -112,3 +112,57 @@ describe('見出しに足すもの（actions）', () => {
     expect(await screen.findByRole('button', { name: 'わたしのボタン' })).toBeInTheDocument()
   })
 })
+
+describe('ほかの端末の変更（保存先の subscribe）', () => {
+  it('保存先から知らせが来たら、読み直して画面に出す', async () => {
+    const base = memoryStorage({ categories: [cat('c1', '仕事', 0)] })
+    let notify = () => {}
+    const unsubscribe = vi.fn()
+    const storage = {
+      ...base,
+      subscribe: (onChange: () => void) => {
+        notify = onChange
+        return unsubscribe
+      },
+    }
+    const { unmount } = render(<LinkShelf storage={storage} />)
+    await screen.findByRole('region', { name: '仕事' })
+    // ほかの端末で足されたつもり
+    await base.putCategory(cat('c2', '旅行', 1))
+    await act(async () => notify())
+    expect(await screen.findByRole('region', { name: '旅行' })).toBeInTheDocument()
+    unmount()
+    expect(unsubscribe).toHaveBeenCalled()
+  })
+})
+
+describe('英語の表示（locale="en"）', () => {
+  it('画面の言葉が英語になる', async () => {
+    render(<LinkShelf storage={sample()} locale="en" />)
+    expect(await screen.findByRole('heading', { name: 'Links' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search links' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add category/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Add link or text/ }).length).toBeGreaterThan(0)
+  })
+
+  it('ダイアログも英語になる', async () => {
+    render(<LinkShelf storage={memoryStorage()} locale="en" />)
+    fireEvent.click(await screen.findByRole('button', { name: /Add category/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Add category' })
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(within(dialog).getByPlaceholderText('e.g. Work')).toBeInTheDocument()
+  })
+
+  it('locale を付けなければ日本語', async () => {
+    render(<LinkShelf storage={memoryStorage()} />)
+    expect(await screen.findByRole('heading', { name: 'リンク集' })).toBeInTheDocument()
+  })
+})
+
+describe('名前を取る窓口が無いとき', () => {
+  it('リンクの編集画面に「URL から名前を取得」を出さない', async () => {
+    render(<LinkShelf storage={sample()} />)
+    fireEvent.click(await screen.findByRole('button', { name: '「Example」を編集' }))
+    expect(screen.queryByRole('button', { name: 'URL から名前を取得' })).not.toBeInTheDocument()
+  })
+})

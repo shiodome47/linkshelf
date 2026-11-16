@@ -17,6 +17,12 @@ export interface LinkShelfStorage {
   deleteLinks(ids: string[]): Promise<void>
   /** まとめて書く（並べ替えなど）。無ければ 1 件ずつ put する */
   bulkPut?(data: { categories?: Category[]; links?: Link[] }): Promise<void>
+  /**
+   * 保存先の中身が外から変わったら知らせる（同期でほかの端末の変更が届いたときなど）。
+   * 知らせを受けると、<LinkShelf> は loadAll で読み直す。戻り値は、知らせをやめる関数。
+   * 無ければ、開いたときに 1 回だけ読む。
+   */
+  subscribe?(onChange: () => void): () => void
 }
 
 /** まとめて書く。bulkPut が無い保存先では 1 件ずつ書く */

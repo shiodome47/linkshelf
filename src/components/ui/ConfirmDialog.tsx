@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from './Button'
 import { Dialog } from './Dialog'
+import { useMessages } from '../../i18n'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -9,7 +10,7 @@ interface ConfirmDialogProps {
   onConfirm: () => Promise<void>
   title: string
   description: string
-  /** 確認ボタンのラベル（デフォルト: 削除） */
+  /** 確認ボタンのラベル（既定: 削除） */
   confirmLabel?: string
   /** danger（赤）または default（グレー） */
   variant?: 'danger' | 'default'
@@ -25,9 +26,10 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmLabel = '削除',
+  confirmLabel,
   variant = 'danger',
 }: ConfirmDialogProps) {
+  const m = useMessages()
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleConfirm = async () => {
@@ -53,7 +55,7 @@ export function ConfirmDialog({
         {/* アクション */}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={isProcessing}>
-            キャンセル
+            {m.cancel}
           </Button>
           <Button
             variant={variant === 'danger' ? 'danger' : 'secondary'}
@@ -61,7 +63,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             disabled={isProcessing}
           >
-            {isProcessing ? '処理中...' : confirmLabel}
+            {isProcessing ? m.processing : (confirmLabel ?? m.delete)}
           </Button>
         </div>
       </div>

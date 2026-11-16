@@ -11,6 +11,7 @@ import { normalizeLinkInput } from '../linkUtils'
 import { useLinkShelf } from '../context'
 import { type LinkSortMode, groupLinksByCategory } from '../store'
 import { LinkIcon } from './SiteIcon'
+import { useMessages, type LinkShelfMessages } from '../i18n'
 
 interface CategoryManageDialogProps {
   /** 開いているカテゴリ。null で閉じる */
@@ -29,10 +30,10 @@ interface CategoryManageDialogProps {
 const smallSelect =
   'cursor-pointer rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:cursor-not-allowed disabled:opacity-40'
 
-const SORT_OPTIONS: { value: LinkSortMode; label: string }[] = [
-  { value: 'title', label: '名前順' },
-  { value: 'newest', label: '追加が新しい順' },
-  { value: 'recent', label: '最近開いた順' },
+const SORT_OPTIONS: { value: LinkSortMode; label: (m: LinkShelfMessages) => string }[] = [
+  { value: 'title', label: (m) => m.sortByTitle },
+  { value: 'newest', label: (m) => m.sortByNewest },
+  { value: 'recent', label: (m) => m.sortByRecent },
 ]
 
 /**
@@ -50,6 +51,7 @@ export function CategoryManageDialog({
 }: CategoryManageDialogProps) {
   const { categories, links: allLinks, addLinkFromUrl, updateCategory, updateLink, moveLinks, sortLinks } =
     useLinkShelf()
+  const m = useMessages()
   const category = categories.find((c) => c.id === categoryId) ?? null
   const links = useMemo(
     () => (categoryId ? groupLinksByCategory(allLinks).get(categoryId) ?? [] : []),
@@ -103,7 +105,7 @@ export function CategoryManageDialog({
     e.preventDefault()
     const url = normalizeLinkInput(urlInput)
     if (!url) {
-      setUrlError('URL を確認してください（例: https://example.com）')
+      setUrlError(m.checkUrl)
       return
     }
     await addLinkFromUrl(category.id, url)
@@ -123,7 +125,7 @@ export function CategoryManageDialog({
     })
 
   return (
-    <Dialog isOpen={!hidden} onClose={onClose} title="カテゴリを整理" size="xl">
+    <Dialog isOpen={!hidden} onClose={onClose} title={m.manageTitle} size="xl">
       <div className="space-y-5">
         {/* 名前と色 */}
         <div>
@@ -141,7 +143,7 @@ export function CategoryManageDialog({
                   setEditingName(false)
                 }
               }}
-              aria-label="カテゴリ名"
+              aria-label={m.categoryName}
               className="text-lg font-semibold"
             />
           ) : (
@@ -149,15 +151,15 @@ export function CategoryManageDialog({
               type="button"
               onClick={() => setEditingName(true)}
               className="group flex max-w-full items-center gap-2 rounded-md text-left"
-              title="名前を変更"
+              title={m.rename}
             >
               <span className="truncate text-lg font-semibold text-neutral-100">{category.name}</span>
               <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-neutral-500 group-hover:text-neutral-300" />
             </button>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <p className="text-xs text-neutral-500">{links.length} 件のリンク</p>
-            <div className="flex items-center gap-1.5" role="radiogroup" aria-label="カテゴリの色">
+            <p className="text-xs text-neutral-500">{m.linkCount(links.length)}</p>
+            <div className="flex items-center gap-1.5" role="radiogroup" aria-label={m.categoryColor}>
               {CATEGORY_COLORS.map((opt) => {
                 const active = (category.color ?? 'teal') === opt.value
                 return (
@@ -166,8 +168,8 @@ export function CategoryManageDialog({
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    aria-label={opt.label}
-                    title={opt.label}
+                    aria-label={m.colors[opt.value] ?? opt.label}
+                    title={m.colors[opt.value] ?? opt.label}
                     onClick={() => void updateCategory(category.id, { color: opt.value })}
                     className={cn(
                       'h-3.5 w-3.5 rounded-full transition-transform',
@@ -193,12 +195,12 @@ export function CategoryManageDialog({
                 setUrlError('')
               }}
               inputMode="url"
-              placeholder="リンクを貼り付けて追加（https://...）"
-              aria-label="追加するリンクの URL"
+              placeholder={m.pasteLinkPlaceholder}
+              aria-label={m.linkUrlToAdd}
               aria-invalid={urlError ? true : undefined}
             />
             <Button type="submit" variant="primary" disabled={!urlInput.trim()} className="flex-shrink-0">
-              追加
+              {m.add}
             </Button>
           </div>
           {urlError && <p className="mt-1 text-xs text-red-400">{urlError}</p>}
@@ -214,7 +216,7 @@ export function CategoryManageDialog({
               onChange={() => setSelected(allSelected ? new Set() : new Set(links.map((l) => l.id)))}
               className="h-4 w-4 accent-neutral-500"
             />
-            {selected.size > 0 ? `${selected.size} 件を選択中` : 'すべて選択'}
+            {selected.size > 0 ? m.selectedCount(selected.size) : m.selectAll}
           </label>
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -225,10 +227,10 @@ export function CategoryManageDialog({
                     <select
                       value={moveTo}
                       onChange={(e) => setMoveTo(e.target.value)}
-                      aria-label="移動先のカテゴリ"
+                      aria-label={m.moveTo}
                       className={cn(smallSelect, 'max-w-[10rem]')}
                     >
-                      <option value="">移動先を選ぶ</option>
+                      <option value="">{m.chooseMoveTo}</option>
                       {otherCategories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -244,15 +246,15 @@ export function CategoryManageDialog({
                         setMoveTo('')
                       }}
                     >
-                      移動
+                      {m.move}
                     </Button>
                   </>
                 )}
                 <Button size="sm" onClick={() => onRetitleLinks(selectedLinks)}>
-                  名前を取り直す
+                  {m.retitle}
                 </Button>
                 <Button size="sm" variant="danger" onClick={() => onDeleteLinks(selectedLinks)}>
-                  削除
+                  {m.delete}
                 </Button>
               </>
             ) : (
@@ -263,13 +265,13 @@ export function CategoryManageDialog({
                   if (mode) void sortLinks(category.id, mode)
                 }}
                 disabled={links.length < 2}
-                aria-label="並べ替え"
+                aria-label={m.sort}
                 className={cn(smallSelect, 'max-w-[10rem]')}
               >
-                <option value="">並べ替え…</option>
+                <option value="">{m.sortPlaceholder}</option>
                 {SORT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {o.label(m)}
                   </option>
                 ))}
               </select>
@@ -279,7 +281,7 @@ export function CategoryManageDialog({
 
         {/* リンク一覧 */}
         {links.length === 0 ? (
-          <p className="py-6 text-center text-xs text-neutral-500">リンクはまだありません</p>
+          <p className="py-6 text-center text-xs text-neutral-500">{m.noLinksYet}</p>
         ) : (
           <ul className="-mt-2 divide-y divide-neutral-800/60">
             {links.map((link) => (
@@ -288,20 +290,20 @@ export function CategoryManageDialog({
                   type="checkbox"
                   checked={selected.has(link.id)}
                   onChange={() => toggle(link.id)}
-                  aria-label={`「${link.title}」を選択`}
+                  aria-label={m.selectItem(link.title)}
                   className="h-4 w-4 flex-shrink-0 accent-neutral-500"
                 />
                 <LinkIcon link={link} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-neutral-200">{link.title}</p>
-                  <p className="truncate text-[11px] text-neutral-500">{link.kind === 'text' ? 'テキスト' : getDomain(link.url)}</p>
+                  <p className="truncate text-[11px] text-neutral-500">{link.kind === 'text' ? m.text : getDomain(link.url)}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => void updateLink(link.id, { isFavorited: !link.isFavorited })}
-                  aria-label={link.isFavorited ? `「${link.title}」のお気に入りを解除` : `「${link.title}」をお気に入りに追加`}
+                  aria-label={link.isFavorited ? m.unfavorite(link.title) : m.favorite(link.title)}
                   aria-pressed={link.isFavorited}
-                  title={link.isFavorited ? 'お気に入りを解除' : 'お気に入り'}
+                  title={link.isFavorited ? m.unfavoriteHint : m.favoriteHint}
                   className={cn(
                     'flex h-7 w-7 items-center justify-center rounded-md hover:bg-neutral-800',
                     link.isFavorited ? 'text-amber-400' : 'text-neutral-500 hover:text-neutral-300',
@@ -312,8 +314,8 @@ export function CategoryManageDialog({
                 <button
                   type="button"
                   onClick={() => onEditLink(link)}
-                  aria-label={`「${link.title}」を編集`}
-                  title="編集"
+                  aria-label={m.editItem(link.title)}
+                  title={m.edit}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -326,10 +328,10 @@ export function CategoryManageDialog({
         {/* フッター */}
         <div className="flex items-center justify-between border-t border-neutral-800 pt-4">
           <Button size="sm" variant="danger" onClick={() => onDeleteCategory(category)}>
-            カテゴリを削除
+            {m.deleteCategoryTitle}
           </Button>
           <Button size="sm" onClick={onClose}>
-            閉じる
+            {m.close}
           </Button>
         </div>
       </div>

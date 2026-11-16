@@ -69,6 +69,11 @@ export interface LinkShelfState {
 
   // --- 初期化 ---
   loadAll: () => Promise<void>
+  /**
+   * 保存先の「変わったら知らせる」窓口（subscribe）を使い始める。知らせが来たら読み直す。
+   * 戻り値は、やめる関数。保存先に窓口が無ければ、何もしない
+   */
+  watch: () => () => void
 
   // --- カテゴリ ---
   addCategory: (data: CreateCategoryInput) => Promise<Category>
@@ -154,6 +159,14 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
       loadAll: async () => {
         const { categories, links } = await storage.loadAll()
         set({ categories, links, loaded: true })
+      },
+
+      watch: () => {
+        if (!storage.subscribe) return () => {}
+        return storage.subscribe(() => {
+          // 読み直しに失敗しても、今の表示はそのまま残す
+          get().loadAll().catch(() => {})
+        })
       },
 
       // ─── カテゴリ ─────────────────────────────────────────

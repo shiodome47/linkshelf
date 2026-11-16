@@ -37,6 +37,7 @@ import { indexedDbStorage } from './storage/indexedDb'
 import type { LinkShelfStorage } from './storage/types'
 import { groupLinksByCategory, type FetchTitle } from './store'
 import type { Category, Link } from './types'
+import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
 import { ThemeProvider, type LinkShelfTheme } from './theme'
 import { cn } from './utils/cn'
 
@@ -49,8 +50,10 @@ export interface LinkShelfProps {
   storage?: LinkShelfStorage
   /** ページの名前を取る窓口。渡さなければ、名前は URL から作る（「名前を取り直す」も出さない） */
   fetchTitle?: FetchTitle
-  /** 見出し（既定は「リンク集」） */
+  /** 見出し（既定は「リンク集」。英語では「Links」） */
   title?: string
+  /** 画面の言葉。ja（日本語。既定）か en（英語） */
+  locale?: LinkShelfLocale
   /** 明るさ。light / dark / system（端末の設定に合わせる。既定） */
   theme?: LinkShelfTheme
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
@@ -67,20 +70,22 @@ export interface LinkShelfProps {
  * - リンクはドラッグで並び替え・別のカテゴリへ移動、カードもドラッグで並び替えられる
  * - カードの「整理する」から、名前の変更・まとめて移動／削除・並べ替えができる
  */
-export function LinkShelf({ storage, fetchTitle, title, theme = 'system', actions, className }: LinkShelfProps) {
+export function LinkShelf({ storage, fetchTitle, title, locale = 'ja', theme = 'system', actions, className }: LinkShelfProps) {
   // 保存先は最初の 1 回だけ決める（描くたびに IndexedDB を開き直さないように）
   const [store] = useState(() => storage ?? indexedDbStorage())
   return (
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
-      <ThemeProvider value={theme}>
-        <Shelf title={title} theme={theme} actions={actions} className={className} />
-      </ThemeProvider>
+      <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
+        <ThemeProvider value={theme}>
+          <Shelf title={title} theme={theme} actions={actions} className={className} />
+        </ThemeProvider>
+      </LocaleProvider>
     </LinkShelfProvider>
   )
 }
 
 function Shelf({
-  title = 'リンク集',
+  title,
   theme,
   actions,
   className,
@@ -90,14 +95,17 @@ function Shelf({
   actions?: ReactNode
   className?: string
 }) {
-  const { categories, links, loaded, loadAll, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
+  const { categories, links, loaded, loadAll, watch, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
     useLinkShelf()
+  const m = useMessages()
 
   // 保存先から読む（読めなかったときは、見出しの下に知らせる）
   const [loadError, setLoadError] = useState(false)
   useEffect(() => {
     loadAll().catch(() => setLoadError(true))
   }, [loadAll])
+  // 保存先が「変わったら知らせる」窓口を持っていれば、知らせのたびに読み直す（同期など）
+  useEffect(() => watch(), [watch])
 
   const [query, setQuery] = useState('')
   const searching = query.trim().length > 0
@@ -289,7 +297,7 @@ function Shelf({
     <div className="bg-neutral-950 text-neutral-100">
       {/* ヘッダー */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-neutral-800 px-4 py-3 sm:px-6">
-        <h2 className="text-sm font-semibold text-neutral-200">{title}</h2>
+        <h2 className="text-sm font-semibold text-neutral-200">{title ?? m.shelfTitle}</h2>
         {categories.length > 0 && (
           <div className="relative order-last w-full sm:order-none sm:ml-4 sm:w-64">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
@@ -298,15 +306,15 @@ function Shelf({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
-              placeholder="リンクを検索"
-              aria-label="リンクを検索"
+              placeholder={m.search}
+              aria-label={m.search}
               className="w-full rounded-lg border border-neutral-800 bg-neutral-900 py-1.5 pl-8 pr-8 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent-500 [&::-webkit-search-cancel-button]:hidden"
             />
             {searching && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="検索をクリア"
+                aria-label={m.clearSearch}
                 className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-neutral-500 hover:text-neutral-300"
               >
                 <X className="h-3.5 w-3.5" />
@@ -320,16 +328,16 @@ function Shelf({
             <Button
               size="sm"
               onClick={() => setRetitling('all')}
-              title="ページのタイトルから名前をまとめて取り直す"
-              aria-label="名前を取り直す"
+              title={m.retitleHint}
+              aria-label={m.retitle}
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">名前を取り直す</span>
+              <span className="hidden sm:inline">{m.retitle}</span>
             </Button>
           )}
           <Button variant="primary" size="sm" onClick={() => setAddCategoryOpen(true)}>
             <FolderPlus className="h-3.5 w-3.5" />
-            カテゴリを追加
+            {m.addCategory}
           </Button>
         </div>
       </div>
@@ -337,16 +345,16 @@ function Shelf({
       {/* 本体 */}
       <div>
         {loadError ? (
-          <p role="alert" className="py-16 text-center text-sm text-red-400">データを読み込めませんでした</p>
+          <p role="alert" className="py-16 text-center text-sm text-red-400">{m.loadFailed}</p>
         ) : !loaded ? null : categories.length === 0 ? (
           <EmptyState
             icon={<LinkGlyph />}
-            title="リンクを整理しましょう"
-            description="カテゴリ（例: 仕事、趣味、読みもの）を作って、よく使うサイトのリンクを貼り付けていきます"
-            action={{ label: 'カテゴリを追加', onClick: () => setAddCategoryOpen(true) }}
+            title={m.emptyTitle}
+            description={m.emptyDescription}
+            action={{ label: m.addCategory, onClick: () => setAddCategoryOpen(true) }}
           />
         ) : searching && visible.length === 0 ? (
-          <p className="py-16 text-center text-sm text-neutral-500">「{query.trim()}」に一致するリンクはありません</p>
+          <p className="py-16 text-center text-sm text-neutral-500">{m.noMatch(query.trim())}</p>
         ) : (
           <DndContext
             sensors={sensors}
@@ -435,11 +443,11 @@ function Shelf({
             setDeletingLinks(null)
           }
         }}
-        title="リンクを削除"
+        title={m.deleteLinkTitle}
         description={
           deletingLinks && deletingLinks.length === 1
-            ? `「${deletingLinks[0].title}」を削除しますか？この操作は取り消せません。`
-            : `選んだ ${deletingLinks?.length ?? 0} 件のリンクを削除しますか？この操作は取り消せません。`
+            ? m.deleteOneLink(deletingLinks[0].title)
+            : m.deleteManyLinks(deletingLinks?.length ?? 0)
         }
       />
 
@@ -453,8 +461,8 @@ function Shelf({
             setManagingId(null)
           }
         }}
-        title="カテゴリを削除"
-        description={`「${deletingCategory?.name}」を削除しますか？\nこのカテゴリのリンクもすべて削除されます。この操作は取り消せません。`}
+        title={m.deleteCategoryTitle}
+        description={m.deleteCategoryConfirm(deletingCategory?.name ?? '')}
       />
     </div>
     </div>

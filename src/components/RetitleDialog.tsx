@@ -8,6 +8,7 @@ import { cn } from '../utils/cn'
 import { isPlaceholderTitle, mapWithLimit } from '../linkUtils'
 import { useLinkShelf } from '../context'
 import { SiteIcon } from './SiteIcon'
+import { useMessages } from '../i18n'
 
 /** 一度に取りに行く数 */
 const CONCURRENCY = 4
@@ -35,6 +36,7 @@ interface RetitleDialogProps {
  */
 export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) {
   const { links, categories, renameLinks, lookupTitle } = useLinkShelf()
+  const m = useMessages()
   const [scope, setScope] = useState<Scope>('placeholder')
   const [phase, setPhase] = useState<'choose' | 'fetching' | 'review' | 'done'>('choose')
   const [results, setResults] = useState<Result[]>([])
@@ -133,29 +135,29 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
   const allChecked = changes.length > 0 && changes.every((r) => checked.has(r.link.id))
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="名前を取り直す" size="xl">
+    <Dialog isOpen={isOpen} onClose={onClose} title={m.retitle} size="xl">
       {phase === 'choose' && (
         <div className="space-y-4">
           <p className="text-sm text-neutral-300">
-            各リンクのページを読み込んで、タイトルを名前の候補にします。反映する前に一覧で確認できます。
+            {m.retitleIntro}
           </p>
           <SegmentedControl<Scope>
-            label="取り直す対象"
+            label={m.retitleScope}
             value={scope}
             onChange={setScope}
             options={[
-              { value: 'placeholder', label: `サイト名のままのリンク（${placeholderLinks.length}）` },
-              { value: 'all', label: `すべてのリンク（${links.length}）` },
+              { value: 'placeholder', label: m.retitlePlaceholderOption(placeholderLinks.length) },
+              { value: 'all', label: m.retitleAllOption(links.length) },
             ]}
           />
           <p className="text-xs text-neutral-500">
             {scope === 'placeholder'
-              ? '「example.com」のようにサイト名のままになっているリンクだけを対象にします。'
-              : 'すべてのリンクを対象にします。自分で付けた名前は、確認画面で最初はチェックを外してあります。'}
+              ? m.retitlePlaceholderHint
+              : m.retitleAllHint}
           </p>
           <div className="flex justify-end gap-2 border-t border-neutral-800 pt-4">
             <Button size="sm" onClick={onClose}>
-              キャンセル
+              {m.cancel}
             </Button>
             <Button
               size="sm"
@@ -163,7 +165,7 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
               disabled={total === 0}
               onClick={() => start(scope === 'all' ? links : placeholderLinks)}
             >
-              取得する
+              {m.retitleStart}
             </Button>
           </div>
         </div>
@@ -172,7 +174,7 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
       {phase === 'fetching' && (
         <div className="space-y-4 py-2">
           <p className="text-sm text-neutral-300" role="status">
-            ページの名前を取得中… {results.length} / {total}
+            {m.retitleProgress(results.length, total)}
           </p>
           <div className="h-1.5 overflow-hidden rounded-full bg-neutral-800">
             <div
@@ -182,7 +184,7 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
           </div>
           <div className="flex justify-end">
             <Button size="sm" onClick={onClose}>
-              中止
+              {m.abort}
             </Button>
           </div>
         </div>
@@ -191,9 +193,9 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
       {phase === 'review' && (
         <div className="space-y-4">
           <p className="text-xs text-neutral-500">
-            {changes.length} 件に新しい名前の候補があります
-            {same > 0 && `／${same} 件は今の名前と同じ`}
-            {failed > 0 && `／${failed} 件は取得できませんでした`}
+            {m.retitleFound(changes.length)}
+            {same > 0 && m.retitleSame(same)}
+            {failed > 0 && m.retitleFailed(failed)}
           </p>
 
           {changes.length > 0 && (
@@ -207,7 +209,7 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
                   }
                   className="h-4 w-4 accent-neutral-500"
                 />
-                すべて選択（{checked.size} 件を選択中）
+                {m.retitleSelectAll(checked.size)}
               </label>
               <ul className="-mt-2 divide-y divide-neutral-800/60">
                 {changes.map(({ link, title }) => {
@@ -225,7 +227,7 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
                         <div className="min-w-0 flex-1 text-sm">
                           <p className="flex min-w-0 items-baseline gap-2 text-neutral-500">
                             <span className={cn('truncate', checked.has(link.id) && 'line-through')}>{link.title}</span>
-                            {custom && <span className="flex-shrink-0 text-[11px]">自分で付けた名前</span>}
+                            {custom && <span className="flex-shrink-0 text-[11px]">{m.customName}</span>}
                           </p>
                           <p className="flex items-center gap-1.5 text-neutral-200">
                             <ArrowRight className="h-3 w-3 flex-shrink-0 text-neutral-500" />
@@ -242,11 +244,11 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
 
           <div className="flex justify-end gap-2 border-t border-neutral-800 pt-4">
             <Button size="sm" onClick={onClose}>
-              {changes.length > 0 ? 'キャンセル' : '閉じる'}
+              {changes.length > 0 ? m.cancel : m.close}
             </Button>
             {changes.length > 0 && (
               <Button size="sm" variant="primary" disabled={checked.size === 0} onClick={() => void apply()}>
-                {checked.size} 件を反映
+                {m.retitleApply(checked.size)}
               </Button>
             )}
           </div>
@@ -256,11 +258,11 @@ export function RetitleDialog({ isOpen, onClose, linkIds }: RetitleDialogProps) 
       {phase === 'done' && (
         <div className="space-y-4 py-2">
           <p className="text-sm text-neutral-300" role="status">
-            {applied} 件の名前を変えました。
+            {m.retitleDone(applied)}
           </p>
           <div className="flex justify-end">
             <Button size="sm" onClick={onClose}>
-              閉じる
+              {m.close}
             </Button>
           </div>
         </div>
