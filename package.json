@@ -1,9 +1,24 @@
 {
   "name": "linkshelf",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "A React component for organizing links, one-line notes and longer texts into cards on a shelf.",
+  "keywords": [
+    "react",
+    "component",
+    "links",
+    "bookmarks",
+    "notes",
+    "drag-and-drop"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiodome47/linkshelf.git"
+  },
+  "homepage": "https://github.com/shiodome47/linkshelf#readme",
+  "bugs": {
+    "url": "https://github.com/shiodome47/linkshelf/issues"
+  },
   "type": "module",
   "files": [
     "dist"
@@ -15,7 +30,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/linkshelf.js"
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "sideEffects": [
     "**/*.css"
@@ -24,21 +40,37 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:example": "npm run build && npm --prefix examples/web ci && npm --prefix examples/web run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "dexie": "^4.0.11",
+    "lucide-react": "^1.73.0",
+    "zustand": "^4.5.7"
+  },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "autoprefixer": "^10.4.19",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^28.1.0",
+    "postcss": "^8.4.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
+    "undici": "^7.30.2",
     "vite": "^8.3.8",
     "vitest": "^4.1.12"
   }

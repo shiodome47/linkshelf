@@ -1,0 +1,43 @@
+/* 見本のページだけの見た目（部品の外側）。色は部品の変数と合わせる */
+:root {
+  color-scheme: dark;
+  --page-bg: #0a0a0a;
+  --page-muted: #737373;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --page-bg: #f5f5f5;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    color-scheme: light;
+    --page-bg: #f5f5f5;
+  }
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--page-bg);
+}
+.page-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 24px 16px 32px;
+  font: 12px/1.5 ui-sans-serif, system-ui, sans-serif;
+  color: var(--page-muted);
+}
+.page-footer label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.page-footer select {
+  font: inherit;
+}
+.page-footer a {
+  color: inherit;
+  margin-left: auto;
+}
