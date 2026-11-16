@@ -90,7 +90,7 @@ function Shelf({
   actions?: ReactNode
   className?: string
 }) {
-  const { categories, links, loaded, loadAll, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
+  const { categories, links, loaded, loadAll, watch, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
     useLinkShelf()
 
   // 保存先から読む（読めなかったときは、見出しの下に知らせる）
@@ -98,6 +98,8 @@ function Shelf({
   useEffect(() => {
     loadAll().catch(() => setLoadError(true))
   }, [loadAll])
+  // 保存先が「変わったら知らせる」窓口を持っていれば、知らせのたびに読み直す（同期など）
+  useEffect(() => watch(), [watch])
 
   const [query, setQuery] = useState('')
   const searching = query.trim().length > 0

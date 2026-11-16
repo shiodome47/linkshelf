@@ -112,3 +112,26 @@ describe('見出しに足すもの（actions）', () => {
     expect(await screen.findByRole('button', { name: 'わたしのボタン' })).toBeInTheDocument()
   })
 })
+
+describe('ほかの端末の変更（保存先の subscribe）', () => {
+  it('保存先から知らせが来たら、読み直して画面に出す', async () => {
+    const base = memoryStorage({ categories: [cat('c1', '仕事', 0)] })
+    let notify = () => {}
+    const unsubscribe = vi.fn()
+    const storage = {
+      ...base,
+      subscribe: (onChange: () => void) => {
+        notify = onChange
+        return unsubscribe
+      },
+    }
+    const { unmount } = render(<LinkShelf storage={storage} />)
+    await screen.findByRole('region', { name: '仕事' })
+    // ほかの端末で足されたつもり
+    await base.putCategory(cat('c2', '旅行', 1))
+    await act(async () => notify())
+    expect(await screen.findByRole('region', { name: '旅行' })).toBeInTheDocument()
+    unmount()
+    expect(unsubscribe).toHaveBeenCalled()
+  })
+})
