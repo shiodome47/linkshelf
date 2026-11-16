@@ -1,6 +1,6 @@
 {
   "name": "linkshelf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A React component for organizing links, one-line notes and longer texts into cards on a shelf.",
   "keywords": [
     "react",
@@ -15,7 +15,7 @@
     "type": "git",
     "url": "git+https://github.com/shiodome47/linkshelf.git"
   },
-  "homepage": "https://github.com/shiodome47/linkshelf#readme",
+  "homepage": "https://linkshelf-chi.vercel.app",
   "bugs": {
     "url": "https://github.com/shiodome47/linkshelf/issues"
   },
