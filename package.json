@@ -1,6 +1,6 @@
 {
   "name": "linkshelf",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A React component for organizing links, one-line notes and longer texts into cards on a shelf.",
   "keywords": [
     "react",
@@ -37,7 +37,7 @@
     "**/*.css"
   ],
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/check-css-scope.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
