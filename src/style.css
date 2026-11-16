@@ -1,0 +1,74 @@
+/*
+ * linkshelf の見た目。.linkshelf の中だけに効く。
+ * Tailwind の初期化（preflight）の代わりに、部品の中で必要なものだけを整える。
+ * :where() で包んで弱くしておき、Tailwind のクラスが必ず勝つようにする。
+ */
+:where(.linkshelf),
+:where(.linkshelf) *,
+:where(.linkshelf) ::before,
+:where(.linkshelf) ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+
+:where(.linkshelf) {
+  font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+:where(.linkshelf) :where(h1, h2, h3, p, ul, ol, figure) {
+  margin: 0;
+}
+
+:where(.linkshelf) :where(h1, h2, h3) {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+:where(.linkshelf) :where(ul, ol) {
+  list-style: none;
+  padding: 0;
+}
+
+:where(.linkshelf) :where(a) {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+:where(.linkshelf) :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
+
+:where(.linkshelf) :where(button, [role='button']) {
+  cursor: pointer;
+}
+
+:where(.linkshelf) :where(button:disabled) {
+  cursor: default;
+}
+
+:where(.linkshelf) :where(img, svg) {
+  display: block;
+  vertical-align: middle;
+}
+
+:where(.linkshelf) :where(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+:where(.linkshelf) :where(input::placeholder, textarea::placeholder) {
+  opacity: 1;
+}
+
+/* Tailwind の変数の初期値（--tw-translate-x など）。preflight を切っているので、ここでは変数だけが出る */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

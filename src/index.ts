@@ -3,7 +3,12 @@
 /** 部品のバージョン */
 export const VERSION = '0.0.0'
 
+import './style.css'
+
 export type { Category, Link } from './types'
+
+// 部品
+export { LinkShelf, type LinkShelfProps } from './LinkShelf'
 
 // 保存先の窓口
 export type { LinkShelfStorage } from './storage/types'

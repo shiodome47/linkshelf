@@ -27,3 +27,12 @@ export function openExternal(url: string | undefined | null): boolean {
   window.open(safe, '_blank', 'noopener,noreferrer')
   return true
 }
+
+/** URL のホスト名（表示用。読めなければそのまま返す） */
+export function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}

@@ -14,9 +14,14 @@ export interface LinkShelfProviderProps extends LinkShelfStoreOptions {
   children: ReactNode
 }
 
-/** ストアを 1 つ作って、中の部品へ渡す。storage ははじめに渡したものを使い続ける */
+/** ストアを 1 つ作って、中の部品へ渡す。storage と fetchTitle は、はじめに渡したものを使い続ける */
 export function LinkShelfProvider({ storage, fetchTitle, children }: LinkShelfProviderProps) {
   const [store] = useState(() => createLinkShelfStore(storage, { fetchTitle }))
+  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+}
+
+/** できあがったストアを、そのまま中の部品へ渡す（テストなどで使う） */
+export function LinkShelfStoreProvider({ store, children }: { store: LinkShelfStore; children: ReactNode }) {
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }
 
@@ -27,7 +32,10 @@ export function useLinkShelfStoreApi(): LinkShelfStore {
   return store
 }
 
-/** いまの <LinkShelf> のストアから、必要なところだけを読む */
-export function useLinkShelf<T>(selector: (state: LinkShelfState) => T): T {
-  return useStore(useLinkShelfStoreApi(), selector)
+/** いまの <LinkShelf> のストアから、必要なところだけを読む（selector を省くと全部） */
+export function useLinkShelf(): LinkShelfState
+export function useLinkShelf<T>(selector: (state: LinkShelfState) => T): T
+export function useLinkShelf<T>(selector?: (state: LinkShelfState) => T): T | LinkShelfState {
+  const pick: (state: LinkShelfState) => T | LinkShelfState = selector ?? ((s) => s)
+  return useStore(useLinkShelfStoreApi(), pick)
 }

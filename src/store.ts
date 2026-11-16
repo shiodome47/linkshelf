@@ -64,6 +64,8 @@ export interface LinkShelfState {
   loaded: boolean
   /** ページの名前を取りに行っている最中のリンク */
   fetchingTitleIds: string[]
+  /** ページの名前を取る窓口があるか（無ければ「名前を取り直す」などを出さない） */
+  canFetchTitle: boolean
 
   // --- 初期化 ---
   loadAll: () => Promise<void>
@@ -145,6 +147,7 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
       links: [],
       loaded: false,
       fetchingTitleIds: [],
+      canFetchTitle: !!fetchTitle,
 
       // ─── 初期化 ───────────────────────────────────────────
 
