@@ -30,5 +30,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // 部品のテストと、見本のページの「名前を取る処理」のテスト
+    include: ['src/**/*.test.{ts,tsx}', 'examples/web/api/**/*.test.ts'],
   },
 })

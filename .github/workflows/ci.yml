@@ -1,5 +1,5 @@
 # PR を出したときと main が更新されたときに、自動で確認する（CI）。
-# 型のチェック・テスト・ビルドの 3 つが通るかを見る。
+# 型のチェック・テスト・ビルド（部品と見本のページ）が通るかを見る。
 name: CI
 
 on:
@@ -24,3 +24,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # 見本のページ（examples/web）も、組み込む側と同じ形でビルドできるか
+      - run: npm --prefix examples/web ci
+      - run: npm --prefix examples/web run build

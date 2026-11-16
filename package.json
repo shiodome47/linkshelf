@@ -25,7 +25,8 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:example": "npm run build && npm --prefix examples/web ci && npm --prefix examples/web run build"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -53,6 +54,7 @@
     "react-dom": "^18.3.1",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
+    "undici": "^7.30.2",
     "vite": "^8.3.8",
     "vitest": "^4.1.12"
   }
