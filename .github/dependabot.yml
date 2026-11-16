@@ -1,5 +1,7 @@
 # Dependabot: 使っている部品に新しい版や脆弱性の直しが出たら、GitHub が PR を作ってくれる。
 # PR が多くなりすぎないように、週に 1 回、小さな更新（minor / patch）はまとめて 1 つの PR にする。
+# 大きな版の更新（major。例: 3.x → 4.x）は作りが変わることがあるので、PR を作らない。
+# 必要になったら、自分で 1 つずつ試して上げる（重い脆弱性は CI の npm audit で気づける）。
 version: 2
 updates:
   # 部品本体
@@ -10,6 +12,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
 
   # 見本のページ
   - package-ecosystem: npm
@@ -19,9 +24,15 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
 
   # GitHub Actions（CI で使っている actions/checkout など）
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
