@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "linkshelf": "file:../..",
+    "lucide-react": "^1.73.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "undici": "^7.30.2"

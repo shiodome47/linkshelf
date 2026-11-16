@@ -50,6 +50,7 @@ export function App() {
 | `fetchTitle` | ページの名前を取る関数 `(url) => Promise<string \| null>` | なし（名前は URL から作る） |
 | `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
 | `title` | 見出し | `'リンク集'` |
+| `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
 `storage` と `fetchTitle` は、最初に渡したものを使い続けます。
@@ -130,7 +131,8 @@ const myStorage: LinkShelfStorage = {
 
 ### 見本のページ
 
-[`examples/web`](./examples/web) に、この部品を使った単独のアプリがあります。
+[`examples/web`](./examples/web) に、この部品を使った単独のアプリがあります（https://linkshelf-chi.vercel.app ）。
+データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。
 
 ```bash
 npm run build:example
@@ -183,6 +185,7 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `fetchTitle` | `(url) => Promise<string \| null>` that returns a page title | none (titles come from the URL) |
 | `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
 | `title` | Heading | `'リンク集'` |
+| `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 
 `storage` and `fetchTitle` are read once, on first render.
