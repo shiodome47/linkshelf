@@ -1,34 +1,19 @@
 # linkshelf
 
+[![npm](https://img.shields.io/npm/v/linkshelf)](https://www.npmjs.com/package/linkshelf)
+[![CI](https://github.com/shiodome47/linkshelf/actions/workflows/ci.yml/badge.svg)](https://github.com/shiodome47/linkshelf/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/linkshelf)](https://github.com/shiodome47/linkshelf/blob/main/LICENSE)
+
 リンク・1 行メモ・長めのテキストを、カードに分けて棚に並べる React の部品です。
 A React component that organizes links, one-line notes and longer texts into cards on a shelf.
 
-- [日本語](#日本語)
-- [English](#english)
+**デモ / Demo：https://linkshelf-chi.vercel.app**
 
----
-
-## 日本語
-
-### できること
-
-- カテゴリ（カード）を作る・名前と色を変える・消す
-- カードをドラッグで並べ替える（置いた場所に、そのとおり並ぶ。スマホでは 1 列）
-- カードの中のリンクをドラッグで並べ替える・別のカードへ移す
-- 入力欄に URL を入れて Enter でリンク、URL でない 1 行の文は 1 行テキスト
-- 1 行テキストはダブルクリックでその場で書き換え
-- 長めのテキスト（「テキストを書く」「.txt を置く」）と、全文の表示
-- お気に入り（星）・検索・サイトのアイコン・ライト / ダーク表示
-
-### 入れ方
+![linkshelf のライト表示](https://raw.githubusercontent.com/shiodome47/linkshelf/main/docs/images/screenshot-light.png)
 
 ```bash
 npm install linkshelf
 ```
-
-`react` と `react-dom`（18 か 19）が必要です。
-
-### 使い方
 
 ```tsx
 import { LinkShelf } from 'linkshelf'
@@ -39,8 +24,20 @@ export function App() {
 }
 ```
 
-これだけで動きます。データはブラウザの中（IndexedDB）に保存されます。
-見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも使えます。
+[日本語](#日本語) ・ [English](#english)
+
+---
+
+## 日本語
+
+### できること
+
+- カードを作る・名前と色を変える・ドラッグで並べ替える（スマホでは 1 列）
+- URL を入れて Enter でリンク、それ以外の 1 行は 1 行メモ（ダブルクリックで書き換え）
+- 長めのテキスト（書く・.txt を置く）、お気に入り、検索、サイトのアイコン
+- ライト / ダーク表示、日本語 / 英語の表示
+
+データはブラウザの中（IndexedDB）に保存されます。見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも使えます。`react` と `react-dom`（18 か 19）が必要です。
 
 ### 設定（props）
 
@@ -92,17 +89,13 @@ const myStorage: LinkShelfStorage = {
 const syncedStorage: LinkShelfStorage = {
   ...myStorage,
   // 変わったら onChange を呼ぶ。戻り値は、知らせをやめる関数
-  subscribe: (onChange) => {
-    const stop = mySync.onRemoteChange(onChange)
-    return stop
-  },
+  subscribe: (onChange) => mySync.onRemoteChange(onChange),
 }
 ```
 
 ### ページの名前を取る
 
-ブラウザからは、ほかのサイトのページを直接読めません（CORS という制限）。
-名前を自動で付けたいときは、サーバー側で名前を取る処理を用意して、`fetchTitle` で渡します。
+ブラウザからは、ほかのサイトのページを直接読めません（CORS という制限）。名前を自動で付けたいときは、サーバー側で名前を取る処理を用意して、`fetchTitle` で渡します。
 
 ```tsx
 <LinkShelf
@@ -115,8 +108,7 @@ const syncedStorage: LinkShelfStorage = {
 />
 ```
 
-サーバー側の処理の例は [`examples/web/api/title.ts`](./examples/web/api/title.ts) にあります（Vercel の関数）。
-内部ネットワークを覗かれないための対策が入っているので、使うときは削らないでください。
+サーバー側の処理の例は [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) にあります（Vercel の関数）。内部ネットワークを覗かれないための対策が入っているので、使うときは削らないでください。
 
 ### 色を合わせる
 
@@ -148,51 +140,26 @@ const syncedStorage: LinkShelfStorage = {
 
 ### 見本のページ
 
-[`examples/web`](./examples/web) に、この部品を使った単独のアプリがあります（https://linkshelf-chi.vercel.app ）。
-データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
-
-```bash
-npm run build:example
-```
-
-Vercel に置くときは、プロジェクトの Root Directory を `examples/web` にします（設定は `examples/web/vercel.json`）。
+[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) に、この部品を使った単独のアプリがあります（[デモ](https://linkshelf-chi.vercel.app)）。データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
 
 ---
 
 ## English
 
+![linkshelf in dark mode](https://raw.githubusercontent.com/shiodome47/linkshelf/main/docs/images/screenshot-dark.png)
+
 ### Features
 
-- Create, rename, recolor and delete categories (cards)
-- Drag cards to reorder them (they stay where you drop them; one column on phones)
-- Drag links to reorder them or move them to another card
-- Type a URL and press Enter to add a link; any other single line becomes a one-line note
-- Double-click a one-line note to edit it in place
-- Longer texts ("Write text", "Drop a .txt") with a full-text viewer
-- Favorites (star), search, site icons, light / dark theme
+- Create cards, rename and recolor them, drag to reorder (one column on phones)
+- Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
+- Longer texts (write one or drop a .txt), favorites, search, site icons
+- Light / dark theme, Japanese / English labels
 
-Labels are available in Japanese and English (`locale="en"`).
-
-### Install
-
-```bash
-npm install linkshelf
-```
-
-Requires `react` and `react-dom` (18 or 19).
-
-### Usage
+Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app. Requires `react` and `react-dom` (18 or 19).
 
 ```tsx
-import { LinkShelf } from 'linkshelf'
-import 'linkshelf/style.css'
-
-export function App() {
-  return <LinkShelf locale="en" />
-}
+<LinkShelf locale="en" />
 ```
-
-Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app.
 
 ### Props
 
@@ -223,9 +190,8 @@ Add an optional `subscribe(onChange)` that returns an unsubscribe function, and 
 
 ### Page titles
 
-Browsers cannot read other sites directly (CORS), so fetching titles needs a server.
-Pass a `fetchTitle` function that calls your endpoint.
-[`examples/web/api/title.ts`](./examples/web/api/title.ts) is an example Vercel function with SSRF protections (address checks, redirect checks, size and time limits). Keep them if you reuse it.
+Browsers cannot read other sites directly (CORS), so fetching titles needs a server. Pass a `fetchTitle` function that calls your endpoint.
+[`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) is an example Vercel function with SSRF protections (address checks, redirect checks, size and time limits). Keep them if you reuse it.
 
 ### Theming
 
@@ -239,4 +205,4 @@ Override the CSS variables on `.linkshelf`: `--ls-bg`, `--ls-card`, `--ls-border
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](https://github.com/shiodome47/linkshelf/blob/main/LICENSE)
