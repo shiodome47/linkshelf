@@ -34,7 +34,8 @@ export function App() {
 
 - カードを作る・名前と色を変える・ドラッグで並べ替える（スマホでは 1 列）
 - URL を入れて Enter でリンク、それ以外の 1 行は 1 行メモ（ダブルクリックで書き換え）
-- 長めのテキスト（書く・.txt を置く）、お気に入り、検索、サイトのアイコン
+- 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン
+- お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
 - ライト / ダーク表示、日本語 / 英語の表示
 
 ### こんな使い方も
@@ -162,7 +163,8 @@ const syncedStorage: LinkShelfStorage = {
 
 - Create cards, rename and recolor them, drag to reorder (one column on phones)
 - Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
-- Longer texts (write one or drop a .txt), favorites, search, site icons
+- Longer texts (write one or drop a .txt), search, site icons
+- Favorites (star), with a button next to search to show favorites only
 - Light / dark theme, Japanese / English labels
 
 ### Ideas

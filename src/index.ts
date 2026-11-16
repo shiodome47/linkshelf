@@ -1,7 +1,7 @@
 // linkshelf の入り口。外から使えるものは、ここから出す。
 
 /** 部品のバージョン */
-export const VERSION = '0.1.2'
+export const VERSION = '0.2.0'
 
 import './style.css'
 
