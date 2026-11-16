@@ -13,7 +13,8 @@ export default defineConfig({
       fileName: 'linkshelf',
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      // 部品に含めるもの（dexie / zustand など）も、組み込む側の npm install で入るので、出力には含めない
+      external: [/^react(\/.*)?$/, /^react-dom(\/.*)?$/, /^zustand(\/.*)?$/, /^dexie(\/.*)?$/],
     },
   },
   test: {
