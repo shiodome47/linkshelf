@@ -1,9 +1,24 @@
 {
   "name": "linkshelf",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "A React component for organizing links, one-line notes and longer texts into cards on a shelf.",
+  "keywords": [
+    "react",
+    "component",
+    "links",
+    "bookmarks",
+    "notes",
+    "drag-and-drop"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiodome47/linkshelf.git"
+  },
+  "homepage": "https://github.com/shiodome47/linkshelf#readme",
+  "bugs": {
+    "url": "https://github.com/shiodome47/linkshelf/issues"
+  },
   "type": "module",
   "files": [
     "dist"
@@ -26,7 +41,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:example": "npm run build && npm --prefix examples/web ci && npm --prefix examples/web run build"
+    "build:example": "npm run build && npm --prefix examples/web ci && npm --prefix examples/web run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
