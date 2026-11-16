@@ -37,6 +37,16 @@ export function App() {
 - 長めのテキスト（書く・.txt を置く）、お気に入り、検索、サイトのアイコン
 - ライト / ダーク表示、日本語 / 英語の表示
 
+### こんな使い方も
+
+リンク・1 行メモ・テキストを、カードに分けて自由に並べられるので、いろいろな用途に使えます。
+
+- **ブックマーク集**：よく使うサイトを、仕事・趣味などのカードに分けて並べる
+- **備忘録・覚書**：思いついたことを 1 行メモで書きとめる。長いものはテキストに
+- **かんたんなカンバン**：「やること」「作業中」「終わった」のカードを作り、項目をドラッグで移していく（期限や担当者を付ける機能はありません）
+- **調べものの整理**：テーマごとのカードに、参考にしたページとメモをまとめる
+- **目標の管理**：目標ごとのカードに、やることと、役に立つリンクを並べる
+
 データはブラウザの中（IndexedDB）に保存されます。見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも使えます。`react` と `react-dom`（18 か 19）が必要です。
 
 ### 設定（props）
@@ -154,6 +164,16 @@ const syncedStorage: LinkShelfStorage = {
 - Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
 - Longer texts (write one or drop a .txt), favorites, search, site icons
 - Light / dark theme, Japanese / English labels
+
+### Ideas
+
+Because you can mix links, one-line notes and texts freely across cards, linkshelf fits many uses:
+
+- **Bookmarks**: group the sites you use often into cards such as Work and Hobbies
+- **Notes and reminders**: jot things down as one-line notes; use texts for longer ones
+- **A simple kanban board**: make “To do”, “Doing” and “Done” cards and drag items across (no due dates or assignees)
+- **Research**: collect pages and notes for each topic in its own card
+- **Goals**: list the steps and useful links for each goal
 
 Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app. Requires `react` and `react-dom` (18 or 19).
 
