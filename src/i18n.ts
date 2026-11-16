@@ -1,0 +1,301 @@
+import { createContext, useContext } from 'react'
+
+/** 画面の言葉の種類 */
+export type LinkShelfLocale = 'ja' | 'en'
+
+/** 画面に出す言葉のすべて。日本語（ja）と英語（en）を用意する */
+const ja = {
+  // 全体
+  shelfTitle: 'リンク集',
+  search: 'リンクを検索',
+  clearSearch: '検索をクリア',
+  retitle: '名前を取り直す',
+  retitleHint: 'ページのタイトルから名前をまとめて取り直す',
+  addCategory: 'カテゴリを追加',
+  loadFailed: 'データを読み込めませんでした',
+  emptyTitle: 'リンクを整理しましょう',
+  emptyDescription: 'カテゴリ（例: 仕事、趣味、読みもの）を作って、よく使うサイトのリンクを貼り付けていきます',
+  noMatch: (q: string) => `「${q}」に一致するリンクはありません`,
+  deleteLinkTitle: 'リンクを削除',
+  deleteOneLink: (title: string) => `「${title}」を削除しますか？この操作は取り消せません。`,
+  deleteManyLinks: (n: number) => `選んだ ${n} 件のリンクを削除しますか？この操作は取り消せません。`,
+  deleteCategoryTitle: 'カテゴリを削除',
+  deleteCategoryConfirm: (name: string) =>
+    `「${name}」を削除しますか？\nこのカテゴリのリンクもすべて削除されます。この操作は取り消せません。`,
+
+  // 共通のボタン
+  cancel: 'キャンセル',
+  save: '保存',
+  saving: '保存中...',
+  add: '追加',
+  delete: '削除',
+  edit: '編集',
+  close: '閉じる',
+  processing: '処理中...',
+
+  // カテゴリの色
+  colors: {
+    teal: 'ティール',
+    blue: 'ブルー',
+    purple: 'パープル',
+    pink: 'ピンク',
+    orange: 'オレンジ',
+    red: 'レッド',
+    yellow: 'イエロー',
+    green: 'グリーン',
+  } as Record<string, string>,
+
+  // カテゴリの作成・編集
+  categoryNameRequired: 'カテゴリ名は必須です',
+  editCategory: 'カテゴリを編集',
+  categoryName: 'カテゴリ名',
+  categoryNamePlaceholder: '例: 仕事',
+  description: '説明',
+  descriptionPlaceholder: 'カテゴリの説明（任意）',
+  color: 'カラー',
+
+  // カード
+  reorderCard: (name: string) => `「${name}」を並び替える`,
+  reorderCardHint: 'ドラッグでカードを並び替え',
+  manageCard: (name: string) => `「${name}」を整理する`,
+  manageCardHint: '整理する（名前・並び替え・移動・削除）',
+  noLinksMatch: '一致するリンクはありません',
+  noLinksYet: 'リンクはまだありません',
+  newText: '新しいテキスト',
+  textTooltip: (title: string, canEdit: boolean, description: string) =>
+    `${title}\n（テキスト）${canEdit ? '\nダブルクリックで書き換え' : ''}${description ? `\n\n${description}` : ''}`,
+  favorite: (title: string) => `「${title}」をお気に入りに追加`,
+  unfavorite: (title: string) => `「${title}」のお気に入りを解除`,
+  favoriteHint: 'お気に入り',
+  unfavoriteHint: 'お気に入りを解除',
+  editItem: (title: string) => `「${title}」を編集`,
+  oneLineText: '1 行のテキスト',
+  linkName: 'リンクの名前',
+  name: '名前',
+  fetchingTitle: 'ページの名前を取得中',
+  fileReadFailed: 'ファイルを読み込めませんでした',
+  addLinkOrText: 'リンク・テキストを追加',
+  quickAddLabel: '追加するリンクの URL か、1 行のテキスト',
+  quickAddPlaceholder: 'URL か 1 行のテキストを入れて Enter',
+  writeText: 'テキストを書く',
+  dropTxt: '.txt を置く',
+  filesTipLabel: 'PDF・画像などを置くには',
+  filesTipTitle: 'PDF・画像などは？',
+  filesTipBody: 'クラウドのフォルダにまとめて置き、その共有リンクを上に貼ると、どの端末からでも開けます。',
+
+  // カテゴリの整理
+  manageTitle: 'カテゴリを整理',
+  sortByTitle: '名前順',
+  sortByNewest: '追加が新しい順',
+  sortByRecent: '最近開いた順',
+  checkUrl: 'URL を確認してください（例: https://example.com）',
+  rename: '名前を変更',
+  linkCount: (n: number) => `${n} 件のリンク`,
+  categoryColor: 'カテゴリの色',
+  pasteLinkPlaceholder: 'リンクを貼り付けて追加（https://...）',
+  linkUrlToAdd: '追加するリンクの URL',
+  selectedCount: (n: number) => `${n} 件を選択中`,
+  selectAll: 'すべて選択',
+  moveTo: '移動先のカテゴリ',
+  chooseMoveTo: '移動先を選ぶ',
+  move: '移動',
+  sort: '並べ替え',
+  sortPlaceholder: '並べ替え…',
+  selectItem: (title: string) => `「${title}」を選択`,
+  text: 'テキスト',
+
+  // リンク・テキストの編集
+  invalidUrl: '有効な URL を入力してください（https://...）',
+  nameRequired: '名前を入力してください',
+  urlRequired: 'URL を入力してください',
+  writeTextTitle: 'テキストを書く',
+  editText: 'テキストを編集',
+  editLink: 'リンクを編集',
+  textNamePlaceholder: '例: 買い物メモ',
+  linkNamePlaceholder: '例: よく使う辞書',
+  fetching: '取得中…',
+  fetchTitleFromUrl: 'URL から名前を取得',
+  fetchTitleFailed: 'このページからは名前を取得できませんでした',
+  textPlaceholder: 'ここに書きます',
+  memo: 'メモ',
+  memoHint: 'リンクにマウスを乗せると表示されます。検索の対象にもなります',
+  memoPlaceholder: '使い方や特徴など（任意）',
+
+  // 名前の取り直し
+  retitleIntro: '各リンクのページを読み込んで、タイトルを名前の候補にします。反映する前に一覧で確認できます。',
+  retitleScope: '取り直す対象',
+  retitlePlaceholderOption: (n: number) => `サイト名のままのリンク（${n}）`,
+  retitleAllOption: (n: number) => `すべてのリンク（${n}）`,
+  retitlePlaceholderHint: '「example.com」のようにサイト名のままになっているリンクだけを対象にします。',
+  retitleAllHint: 'すべてのリンクを対象にします。自分で付けた名前は、確認画面で最初はチェックを外してあります。',
+  retitleStart: '取得する',
+  retitleProgress: (done: number, total: number) => `ページの名前を取得中… ${done} / ${total}`,
+  abort: '中止',
+  retitleFound: (n: number) => `${n} 件に新しい名前の候補があります`,
+  retitleSame: (n: number) => `／${n} 件は今の名前と同じ`,
+  retitleFailed: (n: number) => `／${n} 件は取得できませんでした`,
+  retitleSelectAll: (n: number) => `すべて選択（${n} 件を選択中）`,
+  customName: '自分で付けた名前',
+  retitleApply: (n: number) => `${n} 件を反映`,
+  retitleDone: (n: number) => `${n} 件の名前を変えました。`,
+
+  // テキストの全文
+  emptyText: '（空のテキスト）',
+  copied: 'コピーしました',
+  copyAll: '全文をコピー',
+
+  // テキストの大きさ
+  textTooBig: (size: string, limit: string) =>
+    `テキストが大きすぎます（${size}）。${limit} までにしてください。大きなファイルはクラウドなどに置いて、リンクで登録してください。`,
+  fileTooBig: (size: string, limit: string) =>
+    `ファイルが大きすぎます（${size}）。${limit} までのテキストファイルを置けます。大きなファイルはクラウドなどに置いて、リンクで登録してください。`,
+  untitledText: 'テキスト',
+}
+
+export type LinkShelfMessages = typeof ja
+
+const en: LinkShelfMessages = {
+  shelfTitle: 'Links',
+  search: 'Search links',
+  clearSearch: 'Clear search',
+  retitle: 'Refresh names',
+  retitleHint: 'Refresh link names from their page titles',
+  addCategory: 'Add category',
+  loadFailed: 'Could not load the data',
+  emptyTitle: 'Organize your links',
+  emptyDescription: 'Create categories (e.g. Work, Hobbies, Reading) and paste the links you use often',
+  noMatch: (q) => `No links match “${q}”`,
+  deleteLinkTitle: 'Delete link',
+  deleteOneLink: (title) => `Delete “${title}”? This cannot be undone.`,
+  deleteManyLinks: (n) => `Delete the ${n} selected links? This cannot be undone.`,
+  deleteCategoryTitle: 'Delete category',
+  deleteCategoryConfirm: (name) => `Delete “${name}”?\nAll links in this category will also be deleted. This cannot be undone.`,
+
+  cancel: 'Cancel',
+  save: 'Save',
+  saving: 'Saving...',
+  add: 'Add',
+  delete: 'Delete',
+  edit: 'Edit',
+  close: 'Close',
+  processing: 'Working...',
+
+  colors: {
+    teal: 'Teal',
+    blue: 'Blue',
+    purple: 'Purple',
+    pink: 'Pink',
+    orange: 'Orange',
+    red: 'Red',
+    yellow: 'Yellow',
+    green: 'Green',
+  },
+
+  categoryNameRequired: 'Please enter a category name',
+  editCategory: 'Edit category',
+  categoryName: 'Category name',
+  categoryNamePlaceholder: 'e.g. Work',
+  description: 'Description',
+  descriptionPlaceholder: 'About this category (optional)',
+  color: 'Color',
+
+  reorderCard: (name) => `Reorder “${name}”`,
+  reorderCardHint: 'Drag to reorder cards',
+  manageCard: (name) => `Organize “${name}”`,
+  manageCardHint: 'Organize (rename, sort, move, delete)',
+  noLinksMatch: 'No matching links',
+  noLinksYet: 'No links yet',
+  newText: 'New text',
+  textTooltip: (title, canEdit, description) =>
+    `${title}\n(text)${canEdit ? '\nDouble-click to edit' : ''}${description ? `\n\n${description}` : ''}`,
+  favorite: (title) => `Add “${title}” to favorites`,
+  unfavorite: (title) => `Remove “${title}” from favorites`,
+  favoriteHint: 'Favorite',
+  unfavoriteHint: 'Remove from favorites',
+  editItem: (title) => `Edit “${title}”`,
+  oneLineText: 'One-line text',
+  linkName: 'Link name',
+  name: 'Name',
+  fetchingTitle: 'Fetching the page name',
+  fileReadFailed: 'Could not read the file',
+  addLinkOrText: 'Add link or text',
+  quickAddLabel: 'URL of the link to add, or one line of text',
+  quickAddPlaceholder: 'URL or a line of text + Enter',
+  writeText: 'Write text',
+  dropTxt: 'Add a .txt',
+  filesTipLabel: 'How to add PDFs and images',
+  filesTipTitle: 'PDFs and images?',
+  filesTipBody: 'Put them in a cloud folder and paste its share link above, so you can open them from any device.',
+
+  manageTitle: 'Organize category',
+  sortByTitle: 'By name',
+  sortByNewest: 'Newest first',
+  sortByRecent: 'Recently opened',
+  checkUrl: 'Please check the URL (e.g. https://example.com)',
+  rename: 'Rename',
+  linkCount: (n) => (n === 1 ? '1 link' : `${n} links`),
+  categoryColor: 'Category color',
+  pasteLinkPlaceholder: 'Paste a link to add (https://...)',
+  linkUrlToAdd: 'URL of the link to add',
+  selectedCount: (n) => `${n} selected`,
+  selectAll: 'Select all',
+  moveTo: 'Move to category',
+  chooseMoveTo: 'Move to…',
+  move: 'Move',
+  sort: 'Sort',
+  sortPlaceholder: 'Sort…',
+  selectItem: (title) => `Select “${title}”`,
+  text: 'Text',
+
+  invalidUrl: 'Please enter a valid URL (https://...)',
+  nameRequired: 'Please enter a name',
+  urlRequired: 'Please enter a URL',
+  writeTextTitle: 'Write text',
+  editText: 'Edit text',
+  editLink: 'Edit link',
+  textNamePlaceholder: 'e.g. Shopping list',
+  linkNamePlaceholder: 'e.g. My dictionary',
+  fetching: 'Fetching…',
+  fetchTitleFromUrl: 'Get name from URL',
+  fetchTitleFailed: 'Could not get a name from this page',
+  textPlaceholder: 'Write here',
+  memo: 'Note',
+  memoHint: 'Shown when you hover over the link. Also used in search',
+  memoPlaceholder: 'How to use it, what it is (optional)',
+
+  retitleIntro: 'Each link’s page is loaded and its title is suggested as the name. You can review the list before applying.',
+  retitleScope: 'Links to refresh',
+  retitlePlaceholderOption: (n) => `Links still named after the site (${n})`,
+  retitleAllOption: (n) => `All links (${n})`,
+  retitlePlaceholderHint: 'Only links still named after the site, like “example.com”.',
+  retitleAllHint: 'All links. Names you chose yourself start unchecked on the review screen.',
+  retitleStart: 'Fetch',
+  retitleProgress: (done, total) => `Fetching page names… ${done} / ${total}`,
+  abort: 'Stop',
+  retitleFound: (n) => `${n} new name suggestions`,
+  retitleSame: (n) => ` / ${n} unchanged`,
+  retitleFailed: (n) => ` / ${n} could not be fetched`,
+  retitleSelectAll: (n) => `Select all (${n} selected)`,
+  customName: 'Your own name',
+  retitleApply: (n) => `Apply ${n}`,
+  retitleDone: (n) => (n === 1 ? 'Renamed 1 link.' : `Renamed ${n} links.`),
+
+  emptyText: '(empty text)',
+  copied: 'Copied',
+  copyAll: 'Copy all',
+
+  textTooBig: (size, limit) =>
+    `The text is too large (${size}). Please keep it under ${limit}. Put large files in cloud storage and add a link instead.`,
+  fileTooBig: (size, limit) =>
+    `The file is too large (${size}). Text files up to ${limit} can be added. Put large files in cloud storage and add a link instead.`,
+  untitledText: 'Text',
+}
+
+export const MESSAGES: Record<LinkShelfLocale, LinkShelfMessages> = { ja, en }
+
+const LocaleContext = createContext<LinkShelfMessages>(ja)
+
+export const LocaleProvider = LocaleContext.Provider
+
+/** いまの言葉（<LinkShelf locale> で決まる） */
+export const useMessages = () => useContext(LocaleContext)

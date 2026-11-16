@@ -8,6 +8,7 @@ import type { Link } from '../types'
 import { normalizeLinkInput } from '../linkUtils'
 import { formatBytes, TEXT_LIMIT_BYTES, textBytes, textLimitError } from '../textFile'
 import { useLinkShelf } from '../context'
+import { useMessages } from '../i18n'
 
 interface LinkCrudDialogProps {
   isOpen: boolean
@@ -25,7 +26,8 @@ interface LinkCrudDialogProps {
  * タグは画面に出さなくなったが、既存のデータは消さずに残す（検索には引き続き使う）。
  */
 export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDialogProps) {
-  const { updateLink, lookupTitle, deleteLink } = useLinkShelf()
+  const { updateLink, lookupTitle, deleteLink, canFetchTitle } = useLinkShelf()
+  const m = useMessages()
 
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -60,7 +62,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
   const handleLookup = async () => {
     const normalized = normalizeLinkInput(url)
     if (!normalized) {
-      setErrors((prev) => ({ ...prev, url: '有効な URL を入力してください（https://...）' }))
+      setErrors((prev) => ({ ...prev, url: m.invalidUrl }))
       return
     }
     setLookup('loading')
@@ -77,9 +79,9 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const newErrors: typeof errors = {}
-    if (!title.trim()) newErrors.title = '名前を入力してください'
+    if (!title.trim()) newErrors.title = m.nameRequired
     if (isText) {
-      const tooBig = textLimitError(text)
+      const tooBig = textLimitError(text, m)
       if (tooBig) newErrors.text = tooBig
       setErrors(newErrors)
       if (Object.keys(newErrors).length > 0) return
@@ -93,8 +95,8 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
       return
     }
     const normalized = normalizeLinkInput(url)
-    if (!url.trim()) newErrors.url = 'URL を入力してください'
-    else if (!normalized) newErrors.url = '有効な URL を入力してください（https://...）'
+    if (!url.trim()) newErrors.url = m.urlRequired
+    else if (!normalized) newErrors.url = m.invalidUrl
     setErrors(newErrors)
     if (Object.keys(newErrors).length > 0 || !normalized) return
 
@@ -107,7 +109,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
       })
       onClose()
     } catch {
-      console.error('[LinkCrudDialog] 保存に失敗しました')
+      console.error('[linkshelf] could not save the link')
     } finally {
       setIsSubmitting(false)
     }
@@ -117,21 +119,21 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
     <Dialog
       isOpen={isOpen}
       onClose={cancel}
-      title={isUnsavedNewText ? 'テキストを書く' : isText ? 'テキストを編集' : 'リンクを編集'}
+      title={isUnsavedNewText ? m.writeTextTitle : isText ? m.editText : m.editLink}
       size={isText ? 'lg' : 'md'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormField label="名前" required error={errors.title}>
+        <FormField label={m.name} required error={errors.title}>
           <Input
             value={title}
             onChange={(e) => {
               setTitle(e.target.value)
               setErrors((prev) => ({ ...prev, title: undefined }))
             }}
-            placeholder={isText ? '例: 買い物メモ' : '例: よく使う辞書'}
+            placeholder={isText ? m.textNamePlaceholder : m.linkNamePlaceholder}
             autoFocus={!isUnsavedNewText}
           />
-          {!isText && (
+          {!isText && canFetchTitle && (
           <div className="mt-1.5 flex items-center gap-2">
             <Button
               type="button"
@@ -139,10 +141,10 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
               onClick={() => void handleLookup()}
               disabled={lookup === 'loading' || !url.trim()}
             >
-              {lookup === 'loading' ? '取得中…' : 'URL から名前を取得'}
+              {lookup === 'loading' ? m.fetching : m.fetchTitleFromUrl}
             </Button>
             {lookup === 'failed' && (
-              <span className="text-[11px] text-neutral-500">このページからは名前を取得できませんでした</span>
+              <span className="text-[11px] text-neutral-500">{m.fetchTitleFailed}</span>
             )}
           </div>
           )}
@@ -150,7 +152,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
 
         {isText ? (
           <FormField
-            label="テキスト"
+            label={m.text}
             error={errors.text}
             hint={`${formatBytes(textBytes(text))} / ${formatBytes(TEXT_LIMIT_BYTES)}`}
           >
@@ -162,8 +164,8 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
               }}
               rows={12}
               autoFocus={isUnsavedNewText}
-              placeholder="ここに書きます"
-              aria-label="テキスト"
+              placeholder={m.textPlaceholder}
+              aria-label={m.text}
             />
           </FormField>
         ) : (
@@ -181,11 +183,11 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
         )}
 
 {!isText && (
-        <FormField label="メモ" hint="リンクにマウスを乗せると表示されます。検索の対象にもなります">
+        <FormField label={m.memo} hint={m.memoHint}>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="使い方や特徴など（任意）"
+            placeholder={m.memoPlaceholder}
             rows={2}
           />
         </FormField>
@@ -194,15 +196,15 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
         <div className="flex items-center gap-2 pt-1">
           {onDelete && !isUnsavedNewText && (
             <Button type="button" variant="danger" size="sm" onClick={() => onDelete(link)}>
-              削除
+              {m.delete}
             </Button>
           )}
           <div className="ml-auto flex gap-2">
             <Button type="button" size="sm" onClick={cancel}>
-              キャンセル
+              {m.cancel}
             </Button>
             <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? '保存中...' : '保存'}
+              {isSubmitting ? m.saving : m.save}
             </Button>
           </div>
         </div>

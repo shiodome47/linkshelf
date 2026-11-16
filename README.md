@@ -49,7 +49,8 @@ export function App() {
 | `storage` | 保存先（下の「保存先を変える」） | `indexedDbStorage()` |
 | `fetchTitle` | ページの名前を取る関数 `(url) => Promise<string \| null>` | なし（名前は URL から作る） |
 | `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
-| `title` | 見出し | `'リンク集'` |
+| `locale` | 画面の言葉。`'ja'`（日本語）/ `'en'`（英語） | `'ja'` |
+| `title` | 見出し | `'リンク集'`（英語では `'Links'`） |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -148,7 +149,7 @@ const syncedStorage: LinkShelfStorage = {
 ### 見本のページ
 
 [`examples/web`](./examples/web) に、この部品を使った単独のアプリがあります（https://linkshelf-chi.vercel.app ）。
-データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。
+データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。見出しの右のボタンで、自動・ライト・ダークを切り替えられます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
 
 ```bash
 npm run build:example
@@ -170,7 +171,7 @@ Vercel に置くときは、プロジェクトの Root Directory を `examples/w
 - Longer texts ("Write text", "Drop a .txt") with a full-text viewer
 - Favorites (star), search, site icons, light / dark theme
 
-The built-in labels are in Japanese.
+Labels are available in Japanese and English (`locale="en"`).
 
 ### Install
 
@@ -187,7 +188,7 @@ import { LinkShelf } from 'linkshelf'
 import 'linkshelf/style.css'
 
 export function App() {
-  return <LinkShelf />
+  return <LinkShelf locale="en" />
 }
 ```
 
@@ -200,7 +201,8 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `storage` | Where to save data (see below) | `indexedDbStorage()` |
 | `fetchTitle` | `(url) => Promise<string \| null>` that returns a page title | none (titles come from the URL) |
 | `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
-| `title` | Heading | `'リンク集'` |
+| `locale` | Language of the labels: `'ja'` (Japanese) / `'en'` (English) | `'ja'` |
+| `title` | Heading | `'リンク集'` (`'Links'` in English) |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 

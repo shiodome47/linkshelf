@@ -10,6 +10,7 @@ export type { Category, Link } from './types'
 // 部品
 export { LinkShelf, type LinkShelfProps } from './LinkShelf'
 export type { LinkShelfTheme } from './theme'
+export { MESSAGES, type LinkShelfLocale, type LinkShelfMessages } from './i18n'
 
 // 保存先の窓口
 export type { LinkShelfStorage } from './storage/types'

@@ -135,3 +135,34 @@ describe('ほかの端末の変更（保存先の subscribe）', () => {
     expect(unsubscribe).toHaveBeenCalled()
   })
 })
+
+describe('英語の表示（locale="en"）', () => {
+  it('画面の言葉が英語になる', async () => {
+    render(<LinkShelf storage={sample()} locale="en" />)
+    expect(await screen.findByRole('heading', { name: 'Links' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search links' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add category/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Add link or text/ }).length).toBeGreaterThan(0)
+  })
+
+  it('ダイアログも英語になる', async () => {
+    render(<LinkShelf storage={memoryStorage()} locale="en" />)
+    fireEvent.click(await screen.findByRole('button', { name: /Add category/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Add category' })
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(within(dialog).getByPlaceholderText('e.g. Work')).toBeInTheDocument()
+  })
+
+  it('locale を付けなければ日本語', async () => {
+    render(<LinkShelf storage={memoryStorage()} />)
+    expect(await screen.findByRole('heading', { name: 'リンク集' })).toBeInTheDocument()
+  })
+})
+
+describe('名前を取る窓口が無いとき', () => {
+  it('リンクの編集画面に「URL から名前を取得」を出さない', async () => {
+    render(<LinkShelf storage={sample()} />)
+    fireEvent.click(await screen.findByRole('button', { name: '「Example」を編集' }))
+    expect(screen.queryByRole('button', { name: 'URL から名前を取得' })).not.toBeInTheDocument()
+  })
+})

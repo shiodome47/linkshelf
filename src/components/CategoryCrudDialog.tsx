@@ -7,6 +7,7 @@ import type { Category } from '../types'
 import { useLinkShelf } from '../context'
 import { cn } from '../utils/cn'
 import { CATEGORY_COLORS as COLOR_OPTIONS } from '../categoryColors'
+import { useMessages } from '../i18n'
 
 interface CategoryCrudDialogProps {
   isOpen: boolean
@@ -25,6 +26,7 @@ export function CategoryCrudDialog({
 }: CategoryCrudDialogProps) {
   const isEdit = category !== undefined
   const { addCategory, updateCategory } = useLinkShelf()
+  const m = useMessages()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -44,7 +46,7 @@ export function CategoryCrudDialog({
 
   const validate = (): boolean => {
     if (!name.trim()) {
-      setNameError('カテゴリ名は必須です')
+      setNameError(m.categoryNameRequired)
       return false
     }
     return true
@@ -67,7 +69,7 @@ export function CategoryCrudDialog({
       }
       onClose()
     } catch {
-      console.error('[CategoryCrudDialog] 保存に失敗しました')
+      console.error('[linkshelf] could not save the category')
     } finally {
       setIsSubmitting(false)
     }
@@ -77,39 +79,39 @@ export function CategoryCrudDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? 'カテゴリを編集' : 'カテゴリを追加'}
+      title={isEdit ? m.editCategory : m.addCategory}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormField label="カテゴリ名" required error={nameError}>
+        <FormField label={m.categoryName} required error={nameError}>
           <Input
             value={name}
             onChange={(e) => {
               setName(e.target.value)
               setNameError('')
             }}
-            placeholder="例: 仕事"
+            placeholder={m.categoryNamePlaceholder}
             autoFocus
           />
         </FormField>
 
-        <FormField label="説明">
+        <FormField label={m.description}>
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="カテゴリの説明（任意）"
+            placeholder={m.descriptionPlaceholder}
           />
         </FormField>
 
         {/* カラースウォッチ */}
-        <FormField label="カラー">
+        <FormField label={m.color}>
           <div className="flex flex-wrap gap-2">
             {COLOR_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setColor(opt.value)}
-                title={opt.label}
+                title={m.colors[opt.value] ?? opt.label}
                 className={cn(
                   'h-6 w-6 rounded-full transition-transform',
                   opt.bgClass,
@@ -117,7 +119,7 @@ export function CategoryCrudDialog({
                     ? 'ring-2 ring-neutral-400 ring-offset-2 ring-offset-neutral-900 scale-110'
                     : 'opacity-60 hover:opacity-100',
                 )}
-                aria-label={opt.label}
+                aria-label={m.colors[opt.value] ?? opt.label}
                 aria-pressed={color === opt.value}
               />
             ))}
@@ -126,10 +128,10 @@ export function CategoryCrudDialog({
 
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            キャンセル
+            {m.cancel}
           </Button>
           <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-            {isSubmitting ? '保存中...' : isEdit ? '保存' : '追加'}
+            {isSubmitting ? m.saving : isEdit ? m.save : m.add}
           </Button>
         </div>
       </form>

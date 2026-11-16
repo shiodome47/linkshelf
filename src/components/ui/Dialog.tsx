@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import { useTheme } from '../../theme'
+import { useMessages } from '../../i18n'
 
 type DialogSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -33,6 +34,7 @@ export function Dialog({ isOpen, onClose, title, children, size = 'md' }: Dialog
   // onClose を ref で保持して Escape ハンドラの依存配列を安定させる
   const titleId = useId()
   const theme = useTheme()
+  const m = useMessages()
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -87,7 +89,7 @@ export function Dialog({ isOpen, onClose, title, children, size = 'md' }: Dialog
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
-            aria-label="閉じる"
+            aria-label={m.close}
           >
             <X className="h-4 w-4" />
           </button>
