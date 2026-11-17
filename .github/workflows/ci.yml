@@ -21,12 +21,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # 使っている部品に、知られている脆弱性（重いもの）が無いか
+      # 部品を使う人に届く依存（dependencies）に、知られている重い脆弱性が無いか（あれば止める）
+      - run: npm audit --omit=dev --audit-level=high
+      # 開発の道具（ビルド・テスト）まで含めた確認。直る版がまだ無いことも多いので、知らせるだけにする
       - run: npm audit --audit-level=high
+        continue-on-error: true
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
       # 見本のページ（examples/web）も、組み込む側と同じ形でビルドできるか
       - run: npm --prefix examples/web ci
+      - run: npm --prefix examples/web audit --omit=dev --audit-level=high
       - run: npm --prefix examples/web audit --audit-level=high
+        continue-on-error: true
       - run: npm --prefix examples/web run build
