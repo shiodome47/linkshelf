@@ -13,6 +13,8 @@ export interface LinkShelfOptions {
   openLink?: (url: string, link: Link) => void
   /** 同じサイト（オリジン）の URL は、同じタブで開く */
   sameOriginInSameTab?: boolean
+  /** チェック項目を足せるようにする（入力欄に「チェック項目にする」が出る） */
+  checklist?: boolean
 }
 
 const OptionsContext = createContext<LinkShelfOptions>({})

@@ -36,6 +36,7 @@ export function App() {
 - URL を入れて Enter でリンク、それ以外の 1 行は 1 行メモ（ダブルクリックで書き換え）
 - 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン
 - お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
+- チェック項目（やること・毎日の習慣。`checklist` を付けたとき）。入力欄で「チェック項目にする」を選ぶか、「[] 〜」「[毎日] 〜」と打つ。毎日の項目は日付が変わるとチェックが外れ、カードの見出しに「済んだ数/全体」が出る
 - スマホでは、カテゴリの帯で各カードへ飛べる。カードをたためるようにもできる
 - 画像の追加（置き場所は組み込む側が用意）、画像リンクの印、リンクの開き方の指定（どれも選んで使う）
 - ライト / ダーク表示、日本語 / 英語の表示
@@ -69,6 +70,7 @@ export function App() {
 | `linkIcon` | リンクのアイコンを差し替える `(link) => ReactNode \| null` | なし |
 | `openLink` | リンクを開く方法を差し替える `(url, link) => void` | なし（新しいタブで開く） |
 | `sameOriginInSameTab` | 同じサイトの URL は同じタブで開く | `false` |
+| `checklist` | チェック項目（やること・毎日の習慣）を足せるようにする。`false` でも、すでにあるチェック項目は表示する | `false` |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -250,6 +252,7 @@ URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは�
 - Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
 - Longer texts (write one or drop a .txt), search, site icons
 - Favorites (star), with a button next to search to show favorites only
+- Checklist items (to-dos and daily habits, with `checklist`). Turn on "Make it a checklist item" in the add box, or type `[] …` / `[daily] …`. Daily items are unchecked again when the date changes, and the card header shows "done/total"
 - On phones, a category bar to jump between cards; cards can also be made collapsible
 - Optional image uploads (you provide the storage), image link icons, and control over how links open
 - Light / dark theme, Japanese / English labels
@@ -287,6 +290,7 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `linkIcon` | `(link) => ReactNode \| null` to override link icons | none |
 | `openLink` | `(url, link) => void` to control how links open | none (new tab) |
 | `sameOriginInSameTab` | Open same-origin URLs in the same tab | `false` |
+| `checklist` | Let users add checklist items (to-dos and daily habits). Existing items are still shown when `false` | `false` |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 

@@ -1,6 +1,6 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { ChevronDown, FilePlus, FileText, GripVertical, ImagePlus, Info, Pencil, Plus, Settings2, Star } from 'lucide-react'
-import { type ClipboardEvent, type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { ChevronDown, FilePlus, FileText, GripVertical, ImagePlus, Info, ListChecks, Pencil, Plus, Repeat, Settings2, Square, SquareCheck, Star } from 'lucide-react'
+import { type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import type { Category, Link } from '../types'
 import { cn } from '../utils/cn'
 import { isSafeUrl, isSameOrigin, safeExternalUrl } from '../utils/url'
@@ -17,7 +17,8 @@ import {
   type LinkDragData,
   type LinkDropIndicator,
 } from '../dnd/types'
-import { isOneLineText, normalizeLinkInput, oneLineTitle } from '../linkUtils'
+import { isChecked, isOneLineText, localDateKey, normalizeLinkInput, oneLineTitle, parseCheckInput } from '../linkUtils'
+import { ConfirmDialog } from './ui/ConfirmDialog'
 import { useLinkShelf } from '../context'
 import { LinkIcon, SiteIcon } from './SiteIcon'
 import { TextViewer } from './TextViewer'
@@ -68,9 +69,19 @@ export function CategoryWidget({
   onManage,
   onEditLink,
 }: CategoryWidgetProps) {
-  const { addLinkFromUrl, addLink, updateLink } = useLinkShelf()
+  const { addLinkFromUrl, addLink, updateLink, clearDoneChecks } = useLinkShelf()
   const m = useMessages()
-  const { uploadImage } = useOptions()
+  const { uploadImage, checklist } = useOptions()
+  /** 今日の日付（日付が変わったら描き直して、毎日の項目のチェックを外す） */
+  const today = useToday()
+  const checks = links.filter((l) => l.kind === 'check')
+  const checkedCount = checks.filter((l) => isChecked(l)).length
+  /** チェック済みの「1 回だけ」の項目（まとめて消せる） */
+  const doneOnceCount = checks.filter((l) => l.repeat !== 'daily' && isChecked(l)).length
+  const [confirmClear, setConfirmClear] = useState(false)
+  /** 最後の項目がチェック項目なら、追加欄もはじめからチェック項目にする */
+  const lastLink = links[links.length - 1]
+  const defaultCheck = lastLink?.kind === 'check' ? { repeat: lastLink.repeat } : null
   /** 画像を受け付けるか（uploadImage があって、並べ替えなどを止めていないとき） */
   const canUpload = !!uploadImage && !readOnly && !collapsed
   const imageInput = useRef<HTMLInputElement>(null)
@@ -195,7 +206,21 @@ export function CategoryWidget({
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
           {category.name}
         </h2>
-        <span className="flex-shrink-0 text-[11px] text-neutral-500">{links.length}</span>
+        {checks.length > 0 ? (
+          <span
+            title={m.checkProgress(checkedCount, checks.length)}
+            aria-label={m.checkProgress(checkedCount, checks.length)}
+            data-testid="check-progress"
+            className={cn(
+              'flex-shrink-0 text-[11px] tabular-nums',
+              checkedCount === checks.length ? 'text-accent-400' : 'text-neutral-500',
+            )}
+          >
+            {checkedCount}/{checks.length}
+          </span>
+        ) : (
+          <span className="flex-shrink-0 text-[11px] text-neutral-500">{links.length}</span>
+        )}
         {!viewOnly && (
           <button
             type="button"
@@ -242,6 +267,7 @@ export function CategoryWidget({
               link={link}
               readOnly={readOnly}
               viewOnly={viewOnly}
+              today={today}
               renaming={renamingId === link.id}
               indicator={
                 indicator?.kind === 'link' && indicator.linkId === link.id ? indicator.position : null
@@ -285,9 +311,40 @@ export function CategoryWidget({
         />
       )}
 
+      {/* 済んだ「1 回だけ」の項目をまとめて消す */}
+      {!viewOnly && doneOnceCount > 0 && (
+        <div className="flex justify-end px-3 pb-1">
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            className="rounded-md px-1.5 py-0.5 text-[11px] text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
+          >
+            {m.clearDone(doneOnceCount)}
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        isOpen={confirmClear}
+        onClose={() => setConfirmClear(false)}
+        onConfirm={async () => {
+          await clearDoneChecks(category.id)
+          setConfirmClear(false)
+        }}
+        title={m.clearDoneTitle}
+        description={m.clearDoneConfirm(doneOnceCount)}
+      />
+
       {/* その場で追加 */}
       {!readOnly && (
         <QuickAdd
+          defaultCheck={defaultCheck}
+          onAddCheck={
+            checklist
+              ? async ({ title, repeat }) => {
+                  await addLink({ categoryId: category.id, title, url: '', kind: 'check', repeat })
+                }
+              : undefined
+          }
           onPickImage={canUpload && !uploading ? () => imageInput.current?.click() : undefined}
           onAdd={async (url) => {
             const link = await addLinkFromUrl(category.id, url)
@@ -315,6 +372,8 @@ interface LinkRowProps {
   link: Link
   readOnly: boolean
   viewOnly: boolean
+  /** 今日の日付（日付が変わったら描き直すため） */
+  today: string
   renaming: boolean
   indicator: 'before' | 'after' | null
   wasDragging: () => boolean
@@ -322,11 +381,14 @@ interface LinkRowProps {
   onRenameDone: (title: string) => void
 }
 
-function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, onEdit, onRenameDone }: LinkRowProps) {
-  const { updateLink, recordAccess } = useLinkShelf()
+function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator, wasDragging, onEdit, onRenameDone }: LinkRowProps) {
+  const { updateLink, recordAccess, toggleCheck } = useLinkShelf()
   const m = useMessages()
   const isText = link.kind === 'text'
-  const href = isText ? undefined : safeExternalUrl(link.url)
+  const isCheck = link.kind === 'check'
+  const checked = isCheck && isChecked(link)
+  const daily = isCheck && link.repeat === 'daily'
+  const href = isText || isCheck ? undefined : safeExternalUrl(link.url)
   const { openLink, sameOriginInSameTab } = useOptions()
   /** 同じタブで開くか（sameOriginInSameTab のとき、同じサイトの URL だけ） */
   const sameTab = !!href && !!sameOriginInSameTab && isSameOrigin(href)
@@ -334,6 +396,8 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
   /** 1 行のテキストを、その場で書き換えている */
   const [inlineEditing, setInlineEditing] = useState(false)
   const oneLine = isText && isOneLineText(link)
+  /** チェック項目の名前を、その場で書き換えている */
+  const [checkEditing, setCheckEditing] = useState(false)
   /** 1 行のテキストは、ダブルクリックで書き換えるので、1 回押したときの表示は少し待ってから開く */
   const openTimer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(openTimer.current), [])
@@ -341,7 +405,7 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
   const drag = useDraggable({
     id: linkDragId(link.id),
     data: { kind: 'link', linkId: link.id, categoryId: link.categoryId } satisfies LinkDragData,
-    disabled: readOnly || renaming || inlineEditing,
+    disabled: readOnly || renaming || inlineEditing || checkEditing,
   })
   const drop = useDroppable({
     id: linkDropId(link.id),
@@ -377,9 +441,66 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
             if (t && t !== (link.text ?? '').trim()) void updateLink(link.id, { text: t, title: oneLineTitle(t) })
           }}
         />
+      ) : checkEditing ? (
+        <OneLineTextInput
+          link={link}
+          initial={link.title}
+          label={m.checkItem}
+          onDone={(title) => {
+            setCheckEditing(false)
+            const t = title.trim()
+            if (t && t !== link.title) void updateLink(link.id, { title: t })
+          }}
+        />
       ) : (
         <div className="flex items-center rounded-md transition-colors hover:bg-neutral-800">
-          {isText ? (
+          {isCheck ? (
+            <>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                aria-label={checked ? m.checkOff(link.title) : m.checkOn(link.title)}
+                disabled={viewOnly}
+                onClick={() => {
+                  if (wasDragging()) return
+                  void toggleCheck(link.id)
+                }}
+                className={cn(
+                  'ml-1 flex h-7 w-7 flex-shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500',
+                  checked ? 'text-accent-400' : 'text-neutral-500 hover:text-neutral-300',
+                )}
+              >
+                {checked ? <SquareCheck className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                title={m.checkTooltip(link.title, daily, !readOnly, link.description)}
+                onClick={() => {
+                  if (wasDragging() || viewOnly) return
+                  // 名前を押してもチェックできる。ダブルクリックは書き換えなので、少し待ってから切り替える
+                  clearTimeout(openTimer.current)
+                  if (readOnly) return void toggleCheck(link.id)
+                  openTimer.current = setTimeout(() => void toggleCheck(link.id), 280)
+                }}
+                onDoubleClick={() => {
+                  if (readOnly) return
+                  clearTimeout(openTimer.current)
+                  window.getSelection?.()?.removeAllRanges()
+                  setCheckEditing(true)
+                }}
+                className="flex min-w-0 flex-1 touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2 py-1.5 pl-1 pr-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded-md"
+                {...(readOnly ? {} : { ...drag.attributes, ...drag.listeners, role: undefined, tabIndex: undefined })}
+              >
+                <span className={cn('truncate', checked ? 'text-neutral-500 line-through' : 'text-neutral-200')}>
+                  {link.title}
+                </span>
+                {daily && (
+                  <Repeat aria-label={m.dailyBadge} className="h-3 w-3 flex-shrink-0 text-neutral-500" />
+                )}
+              </button>
+            </>
+          ) : isText ? (
             <button
               type="button"
               title={m.textTooltip(link.title, oneLine && !readOnly, link.description)}
@@ -476,9 +597,22 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
 }
 
 /** 1 行のテキストを、その場で書き換える入力欄（Enter・外を押すと保存、Esc でやめる） */
-function OneLineTextInput({ link, onDone }: { link: Link; onDone: (text: string) => void }) {
+function OneLineTextInput({
+  link,
+  initial,
+  label,
+  onDone,
+}: {
+  link: Link
+  /** はじめに入れておく文（省略時はテキストの本文） */
+  initial?: string
+  /** 読み上げ用の名前（省略時は「1 行のテキスト」） */
+  label?: string
+  onDone: (text: string) => void
+}) {
   const m = useMessages()
-  const [value, setValue] = useState(link.text ?? '')
+  const start = initial ?? link.text ?? ''
+  const [value, setValue] = useState(start)
   const ref = useRef<HTMLInputElement>(null)
   const done = useRef(false)
   useEffect(() => {
@@ -502,10 +636,10 @@ function OneLineTextInput({ link, onDone }: { link: Link; onDone: (text: string)
             e.preventDefault()
             finish(value)
           }
-          if (e.key === 'Escape') finish(link.text ?? '')
+          if (e.key === 'Escape') finish(start)
         }}
         onBlur={() => finish(value)}
-        aria-label={m.oneLineText}
+        aria-label={label ?? m.oneLineText}
         className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
     </div>
@@ -578,11 +712,17 @@ export function QuickAdd({
   onAdd,
   onAddText,
   onWriteText,
+  onAddCheck,
+  defaultCheck = null,
   onPickImage,
 }: {
   onAdd: (url: string) => Promise<void>
   onAddText: (t: { title: string; text: string }) => Promise<void>
   onWriteText: () => Promise<void>
+  /** チェック項目を足す（無ければ、チェック項目にする切り替えを出さない） */
+  onAddCheck?: (t: { title: string; repeat?: 'daily' }) => Promise<void>
+  /** はじめからチェック項目として足す（カードの最後の項目がチェック項目のときなど） */
+  defaultCheck?: { repeat?: 'daily' } | null
   /** 「画像を追加」を押したとき（無ければボタンを出さない） */
   onPickImage?: () => void
 }) {
@@ -592,10 +732,28 @@ export function QuickAdd({
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
+  /** チェック項目として足すか（開くたびに、カードに合わせて決め直す） */
+  const [checkMode, setCheckMode] = useState(false)
+  const [dailyMode, setDailyMode] = useState(false)
+  const canCheck = !!onAddCheck
+  const openAdd = () => {
+    setCheckMode(canCheck && !!defaultCheck)
+    setDailyMode(defaultCheck?.repeat === 'daily')
+    setOpen(true)
+  }
 
   const submit = async () => {
     const input = value.trim()
     if (!input) return
+    // 「[] 〜」「[毎日] 〜」の書き方なら、切り替えに関係なくチェック項目にする
+    const parsed = onAddCheck ? parseCheckInput(input) : null
+    if (onAddCheck && (parsed || checkMode)) {
+      // 続けて打てるように、欄は開いたままにする
+      setValue('')
+      setError('')
+      await onAddCheck(parsed ?? { title: input, ...(dailyMode ? { repeat: 'daily' as const } : {}) })
+      return
+    }
     const url = normalizeLinkInput(input)
     setValue('')
     setError('')
@@ -637,11 +795,11 @@ export function QuickAdd({
       <div className="flex items-center gap-2 px-2 pb-2">
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={openAdd}
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
         >
           <Plus className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{m.addLinkOrText}</span>
+          <span className="truncate">{canCheck && defaultCheck ? m.addCheck : m.addLinkOrText}</span>
         </button>
         {onPickImage && <ImageButton label={m.addImage} onClick={onPickImage} />}
       </div>
@@ -665,7 +823,9 @@ export function QuickAdd({
         }}
         aria-label={m.quickAddLabel}
         aria-invalid={error ? true : undefined}
-        placeholder={m.quickAddPlaceholder}
+        placeholder={
+          checkMode ? (dailyMode ? m.quickAddDailyPlaceholder : m.quickAddCheckPlaceholder) : m.quickAddPlaceholder
+        }
         className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2.5 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
       {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
@@ -681,6 +841,18 @@ export function QuickAdd({
         }}
       />
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {canCheck && (
+          <ToggleChip pressed={checkMode} onClick={() => setCheckMode((v) => !v)} icon={<ListChecks className="h-3.5 w-3.5" aria-hidden="true" />}>
+            {m.checkMode}
+          </ToggleChip>
+        )}
+        {canCheck && checkMode && (
+          <ToggleChip pressed={dailyMode} onClick={() => setDailyMode((v) => !v)} icon={<Repeat className="h-3.5 w-3.5" aria-hidden="true" />}>
+            {m.dailyMode}
+          </ToggleChip>
+        )}
+        {!checkMode && (
+        <>
         <button
           type="button"
           onClick={() => {
@@ -700,7 +872,9 @@ export function QuickAdd({
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           {m.dropTxt}
         </button>
-        {onPickImage && (
+        </>
+        )}
+        {onPickImage && !checkMode && (
           <button
             type="button"
             onClick={() => {
@@ -714,6 +888,7 @@ export function QuickAdd({
           </button>
         )}
         {/* PDF・画像の置き方（マウスを乗せて少しすると出る。スマホは押すと出る） */}
+        {!checkMode && (
         <span className="group/tip relative ml-auto">
           <button
             type="button"
@@ -737,6 +912,7 @@ export function QuickAdd({
             {m.filesTipBody}
           </span>
         </span>
+        )}
       </div>
     </div>
   )
@@ -780,4 +956,54 @@ function ImageButton({ label, onClick }: { label: string; onClick: () => void })
       {label}
     </button>
   )
+}
+
+/** 押すたびに入・切が変わる小さなボタン（入のときは枠つき） */
+function ToggleChip({
+  pressed,
+  onClick,
+  icon,
+  children,
+}: {
+  pressed: boolean
+  onClick: () => void
+  icon: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-xs transition-colors',
+        pressed
+          ? 'border-neutral-600 bg-neutral-800 text-neutral-100'
+          : 'border-transparent text-neutral-400 hover:text-neutral-200',
+      )}
+    >
+      {icon}
+      {children}
+    </button>
+  )
+}
+
+/**
+ * 今日の日付（YYYY-MM-DD）。日付が変わったら新しい値になる。
+ * 1 分ごとと、画面に戻ってきたときに確かめる。
+ */
+function useToday(): string {
+  const [today, setToday] = useState(() => localDateKey(new Date()))
+  useEffect(() => {
+    const check = () => setToday(localDateKey(new Date()))
+    const timer = setInterval(check, 60_000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [])
+  return today
 }

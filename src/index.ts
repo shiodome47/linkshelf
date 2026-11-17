@@ -1,7 +1,7 @@
 // linkshelf の入り口。外から使えるものは、ここから出す。
 
 /** 部品のバージョン */
-export const VERSION = '0.5.0'
+export const VERSION = '0.6.0'
 
 import './style.css'
 
@@ -44,5 +44,8 @@ export {
   oneLineTitle,
   isOneLineText,
   isImageUrl,
+  isChecked,
+  localDateKey,
+  parseCheckInput,
 } from './linkUtils'
 export { TEXT_LIMIT_BYTES, TEXT_ACCEPT, readTextFile, textLimitError } from './textFile'

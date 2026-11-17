@@ -88,6 +88,11 @@ export interface LinkShelfProps {
   openLink?: (url: string, link: Link) => void
   /** true のとき、同じサイト（オリジン）の URL は同じタブで開く */
   sameOriginInSameTab?: boolean
+  /**
+   * チェック項目（やること・毎日の習慣）を足せるようにする。既定は false。
+   * false でも、保存先にすでにあるチェック項目は表示し、チェックを付け外しできる
+   */
+  checklist?: boolean
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
   actions?: ReactNode
   /** いちばん外側の要素に足す class */
@@ -116,6 +121,7 @@ export function LinkShelf({
   linkIcon,
   openLink,
   sameOriginInSameTab = false,
+  checklist = false,
   actions,
   className,
 }: LinkShelfProps) {
@@ -125,7 +131,7 @@ export function LinkShelf({
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
       <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
         <ThemeProvider value={theme}>
-          <OptionsProvider value={{ uploadImage, linkIcon, openLink, sameOriginInSameTab }}>
+          <OptionsProvider value={{ uploadImage, linkIcon, openLink, sameOriginInSameTab, checklist }}>
           <Shelf
             title={title}
             theme={theme}

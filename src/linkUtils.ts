@@ -103,3 +103,42 @@ export function isImageUrl(url: string): boolean {
     return false
   }
 }
+
+// ─── チェック項目 ───────────────────────────────────────────────
+
+/** その日の日付を表す文字列（端末の時刻で YYYY-MM-DD） */
+export function localDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * チェック項目がチェック済みか。
+ * 毎日くり返す項目（repeat === 'daily'）は、今日（端末の時刻）チェックしたときだけ済みとする。
+ */
+export function isChecked(
+  link: { kind?: string; checkedAt?: string; repeat?: string },
+  now: Date = new Date(),
+): boolean {
+  if (link.kind !== 'check' || !link.checkedAt) return false
+  if (link.repeat !== 'daily') return true
+  const at = new Date(link.checkedAt)
+  if (Number.isNaN(at.getTime())) return false
+  return localDateKey(at) === localDateKey(now)
+}
+
+/**
+ * 入力欄に打った文がチェック項目の書き方か。
+ * 「[] 瞑想」「[ ] 瞑想」「□ 瞑想」は 1 回だけ、「[毎日] 瞑想」「[daily] 瞑想」は毎日くり返す。
+ * 書き方に合わなければ null。
+ */
+export function parseCheckInput(input: string): { title: string; repeat?: 'daily' } | null {
+  const text = input.trim()
+  const daily = /^\[(?:毎日|daily)\]\s*(.+)$/i.exec(text)
+  if (daily) return { title: daily[1].trim(), repeat: 'daily' }
+  const once = /^(?:\[\s?\]|□|☐)\s*(.+)$/.exec(text)
+  if (once) return { title: once[1].trim() }
+  return null
+}

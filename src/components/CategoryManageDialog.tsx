@@ -296,7 +296,7 @@ export function CategoryManageDialog({
                 <LinkIcon link={link} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-neutral-200">{link.title}</p>
-                  <p className="truncate text-[11px] text-neutral-500">{link.kind === 'text' ? m.text : getDomain(link.url)}</p>
+                  <p className="truncate text-[11px] text-neutral-500">{link.kind === 'text' ? m.text : link.kind === 'check' ? m.checkItem : getDomain(link.url)}</p>
                 </div>
                 <button
                   type="button"
