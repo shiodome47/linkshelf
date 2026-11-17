@@ -28,15 +28,23 @@ export interface Link {
   /** 入っているカテゴリの id */
   categoryId: string
   title: string
-  /** リンク先。テキスト（kind === 'text'）では空 */
+  /** リンク先。テキスト・チェック項目（kind が 'text' か 'check'）では空 */
   url: string
   /**
    * 'text': 部品の中に保存したテキスト（1 行のメモや .txt の覚書など）。本文は text に入る。
+   * 'check': チェック項目（やること・習慣）。名前が項目の文で、チェックした日時は checkedAt に入る。
    * 省略時はふつうのリンク。
    */
-  kind?: 'text'
+  kind?: 'text' | 'check'
   /** kind === 'text' の本文（上限は TEXT_LIMIT_BYTES） */
   text?: string
+  /** kind === 'check': チェックした日時。チェックしていなければ無い */
+  checkedAt?: string
+  /**
+   * kind === 'check': くり返し。'daily' は毎日の習慣で、日付が変わるとチェックが外れた扱いになる。
+   * 省略時は 1 回だけのやること（チェックしたら完了のまま）。
+   */
+  repeat?: 'daily'
   description: string
   tags: string[]
   /** お気に入り（星） */

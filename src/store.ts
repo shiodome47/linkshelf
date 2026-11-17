@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import type { Category, Link } from './types'
 import { putMany, type LinkShelfStorage } from './storage/types'
-import { titleFromUrl } from './linkUtils'
+import { isChecked, titleFromUrl } from './linkUtils'
 
 // ============================================================
 // 入力の形
@@ -24,8 +24,10 @@ export interface CreateLinkInput {
   categoryId: string
   title: string
   url: string
-  kind?: 'text'
+  kind?: 'text' | 'check'
   text?: string
+  /** kind === 'check' のときのくり返し（'daily' で毎日） */
+  repeat?: 'daily'
   description?: string
   tags?: string[]
 }
@@ -39,6 +41,8 @@ export interface UpdateLinkInput {
   tags?: string[]
   isFavorited?: boolean
   isPinned?: boolean
+  /** チェック項目のくり返し。null で「1 回だけ」に戻す */
+  repeat?: 'daily' | null
 }
 
 /** カテゴリ内リンクの並べ替え方 */
@@ -96,6 +100,10 @@ export interface LinkShelfState {
   renameLinks: (titles: Map<string, string>) => Promise<void>
   /** 最後に開いた日時を記録する（リンクを開いたときに呼ぶ） */
   recordAccess: (id: string) => Promise<void>
+  /** チェック項目のチェックを付ける・外す（毎日くり返す項目は、今日の分） */
+  toggleCheck: (id: string) => Promise<void>
+  /** カテゴリの中の、チェック済みの「1 回だけ」の項目をまとめて消す */
+  clearDoneChecks: (categoryId: string) => Promise<void>
 
   // --- 並べ替え ---
   reorderCategories: (orderedIds: string[]) => Promise<void>
@@ -218,6 +226,7 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
           title: data.title,
           url: data.url,
           ...(data.kind === 'text' ? { kind: 'text' as const, text: data.text ?? '' } : {}),
+          ...(data.kind === 'check' ? { kind: 'check' as const, ...(data.repeat ? { repeat: data.repeat } : {}) } : {}),
           description: data.description ?? '',
           tags: data.tags ?? [],
           isFavorited: false,
@@ -264,7 +273,10 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
       updateLink: async (id, data) => {
         const existing = get().links.find((l) => l.id === id)
         if (!existing) return
-        const updated: Link = { ...existing, ...data, updatedAt: now() }
+        const { repeat, ...rest } = data
+        const updated: Link = { ...existing, ...rest, updatedAt: now() }
+        if (repeat === 'daily') updated.repeat = 'daily'
+        else if (repeat === null) delete updated.repeat
         await storage.putLink(updated)
         set((s) => ({ links: s.links.map((l) => (l.id === id ? updated : l)) }))
       },
@@ -291,6 +303,23 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
         const updated: Link = { ...existing, lastAccessedAt: now() }
         await storage.putLink(updated)
         set((s) => ({ links: s.links.map((l) => (l.id === id ? updated : l)) }))
+      },
+
+      toggleCheck: async (id) => {
+        const existing = get().links.find((l) => l.id === id)
+        if (!existing || existing.kind !== 'check') return
+        const t = now()
+        const { checkedAt: _old, ...rest } = existing
+        const updated: Link = isChecked(existing) ? { ...rest, updatedAt: t } : { ...rest, checkedAt: t, updatedAt: t }
+        await storage.putLink(updated)
+        set((s) => ({ links: s.links.map((l) => (l.id === id ? updated : l)) }))
+      },
+
+      clearDoneChecks: async (categoryId) => {
+        const ids = get()
+          .links.filter((l) => l.categoryId === categoryId && l.kind === 'check' && l.repeat !== 'daily' && isChecked(l))
+          .map((l) => l.id)
+        await get().deleteLinks(ids)
       },
 
       // ─── 並べ替え ─────────────────────────────────────────

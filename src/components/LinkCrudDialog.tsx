@@ -4,6 +4,7 @@ import { Dialog } from './ui/Dialog'
 import { FormField } from './ui/FormField'
 import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
+import { SegmentedControl } from './ui/SegmentedControl'
 import type { Link } from '../types'
 import { normalizeLinkInput } from '../linkUtils'
 import { formatBytes, TEXT_LIMIT_BYTES, textBytes, textLimitError } from '../textFile'
@@ -33,6 +34,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
   const [text, setText] = useState('')
+  const [repeat, setRepeat] = useState<'once' | 'daily'>('once')
   const [errors, setErrors] = useState<{ title?: string; url?: string; text?: string }>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [lookup, setLookup] = useState<'idle' | 'loading' | 'failed'>('idle')
@@ -43,6 +45,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
       setUrl(link?.url ?? '')
       setDescription(link?.description ?? '')
       setText(link?.text ?? '')
+      setRepeat(link?.repeat === 'daily' ? 'daily' : 'once')
       setErrors({})
       setIsSubmitting(false)
       setLookup('idle')
@@ -51,6 +54,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
 
   if (!link) return null
   const isText = link.kind === 'text'
+  const isCheck = link.kind === 'check'
   /** 「テキストを書く」で作ったばかりで、まだ一度も保存していない空のテキスト */
   const isUnsavedNewText = isText && !link.text && link.createdAt === link.updatedAt
   /** 保存せずに閉じる（書きかけを作っただけなら消す） */
@@ -80,6 +84,22 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
     e.preventDefault()
     const newErrors: typeof errors = {}
     if (!title.trim()) newErrors.title = m.nameRequired
+    if (isCheck) {
+      setErrors(newErrors)
+      if (Object.keys(newErrors).length > 0) return
+      setIsSubmitting(true)
+      try {
+        await updateLink(link.id, {
+          title: title.trim(),
+          description: description.trim(),
+          repeat: repeat === 'daily' ? 'daily' : null,
+        })
+        onClose()
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
     if (isText) {
       const tooBig = textLimitError(text, m)
       if (tooBig) newErrors.text = tooBig
@@ -119,7 +139,7 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
     <Dialog
       isOpen={isOpen}
       onClose={cancel}
-      title={isUnsavedNewText ? m.writeTextTitle : isText ? m.editText : m.editLink}
+      title={isUnsavedNewText ? m.writeTextTitle : isText ? m.editText : isCheck ? m.editCheck : m.editLink}
       size={isText ? 'lg' : 'md'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,10 +150,10 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
               setTitle(e.target.value)
               setErrors((prev) => ({ ...prev, title: undefined }))
             }}
-            placeholder={isText ? m.textNamePlaceholder : m.linkNamePlaceholder}
+            placeholder={isText ? m.textNamePlaceholder : isCheck ? m.checkNamePlaceholder : m.linkNamePlaceholder}
             autoFocus={!isUnsavedNewText}
           />
-          {!isText && canFetchTitle && (
+          {!isText && !isCheck && canFetchTitle && (
           <div className="mt-1.5 flex items-center gap-2">
             <Button
               type="button"
@@ -150,7 +170,19 @@ export function LinkCrudDialog({ isOpen, onClose, link, onDelete }: LinkCrudDial
           )}
         </FormField>
 
-        {isText ? (
+        {isCheck ? (
+          <FormField label={m.repeatLabel} hint={m.repeatHint}>
+            <SegmentedControl
+              label={m.repeatLabel}
+              value={repeat}
+              onChange={setRepeat}
+              options={[
+                { value: 'once', label: m.repeatOnce },
+                { value: 'daily', label: m.repeatDaily },
+              ]}
+            />
+          </FormField>
+        ) : isText ? (
           <FormField
             label={m.text}
             error={errors.text}

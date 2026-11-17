@@ -1,4 +1,4 @@
-import { FileText, Image as ImageGlyph } from 'lucide-react'
+import { FileText, Image as ImageGlyph, ListChecks } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../utils/cn'
 import { faviconUrl, isImageUrl, titleFromUrl } from '../linkUtils'
@@ -77,6 +77,9 @@ export function LinkIcon({ link, className }: { link: Link; className?: string }
   const custom = linkIcon?.(link)
   if (custom !== undefined && custom !== null) {
     return <span className={cn('flex h-4 w-4 flex-shrink-0 items-center justify-center', className)}>{custom}</span>
+  }
+  if (link.kind === 'check') {
+    return <ListChecks aria-hidden="true" className={cn('h-4 w-4 flex-shrink-0 text-neutral-400', className)} />
   }
   if (link.kind === 'text') {
     return <FileText aria-hidden="true" className={cn('h-4 w-4 flex-shrink-0 text-accent-400', className)} />
