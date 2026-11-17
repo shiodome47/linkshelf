@@ -56,6 +56,12 @@ export interface LinkShelfProps {
   locale?: LinkShelfLocale
   /** 明るさ。light / dark / system（端末の設定に合わせる。既定） */
   theme?: LinkShelfTheme
+  /**
+   * 閲覧専用。リンクを開く・検索・お気に入りだけ表示はできるが、
+   * 追加・編集・削除・並べ替え・星を付けることはできない。
+   * 画面で隠すだけなので、書き換えを本当に防ぐには、保存先（サーバー）の側でも書き込みを断ること
+   */
+  readOnly?: boolean
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
   actions?: ReactNode
   /** いちばん外側の要素に足す class */
@@ -70,14 +76,23 @@ export interface LinkShelfProps {
  * - リンクはドラッグで並び替え・別のカテゴリへ移動、カードもドラッグで並び替えられる
  * - カードの「整理する」から、名前の変更・まとめて移動／削除・並べ替えができる
  */
-export function LinkShelf({ storage, fetchTitle, title, locale = 'ja', theme = 'system', actions, className }: LinkShelfProps) {
+export function LinkShelf({
+  storage,
+  fetchTitle,
+  title,
+  locale = 'ja',
+  theme = 'system',
+  readOnly = false,
+  actions,
+  className,
+}: LinkShelfProps) {
   // 保存先は最初の 1 回だけ決める（描くたびに IndexedDB を開き直さないように）
   const [store] = useState(() => storage ?? indexedDbStorage())
   return (
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
       <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
         <ThemeProvider value={theme}>
-          <Shelf title={title} theme={theme} actions={actions} className={className} />
+          <Shelf title={title} theme={theme} readOnly={readOnly} actions={actions} className={className} />
         </ThemeProvider>
       </LocaleProvider>
     </LinkShelfProvider>
@@ -87,11 +102,13 @@ export function LinkShelf({ storage, fetchTitle, title, locale = 'ja', theme = '
 function Shelf({
   title,
   theme,
+  readOnly,
   actions,
   className,
 }: {
   title?: string
   theme: LinkShelfTheme
+  readOnly: boolean
   actions?: ReactNode
   className?: string
 }) {
@@ -348,7 +365,7 @@ function Shelf({
         )}
         <div className="ml-auto flex items-center gap-2">
           {actions}
-          {canFetchTitle && links.length > 0 && (
+          {!readOnly && canFetchTitle && links.length > 0 && (
             <Button
               size="sm"
               onClick={() => setRetitling('all')}
@@ -359,10 +376,12 @@ function Shelf({
               <span className="hidden sm:inline">{m.retitle}</span>
             </Button>
           )}
-          <Button variant="primary" size="sm" onClick={() => setAddCategoryOpen(true)}>
-            <FolderPlus className="h-3.5 w-3.5" />
-            {m.addCategory}
-          </Button>
+          {!readOnly && (
+            <Button variant="primary" size="sm" onClick={() => setAddCategoryOpen(true)}>
+              <FolderPlus className="h-3.5 w-3.5" />
+              {m.addCategory}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -373,9 +392,9 @@ function Shelf({
         ) : !loaded ? null : categories.length === 0 ? (
           <EmptyState
             icon={<LinkGlyph />}
-            title={m.emptyTitle}
-            description={m.emptyDescription}
-            action={{ label: m.addCategory, onClick: () => setAddCategoryOpen(true) }}
+            title={readOnly ? m.emptyReadOnly : m.emptyTitle}
+            description={readOnly ? undefined : m.emptyDescription}
+            action={readOnly ? undefined : { label: m.addCategory, onClick: () => setAddCategoryOpen(true) }}
           />
         ) : filtering && visible.length === 0 ? (
           <p className="py-16 text-center text-sm text-neutral-500">
@@ -399,7 +418,9 @@ function Shelf({
                       key={category.id}
                       category={category}
                       links={catLinks}
-                      readOnly={filtering}
+                      readOnly={filtering || readOnly}
+                      filtered={filtering}
+                      viewOnly={readOnly}
                       indicator={indicator}
                       cardDropEdge={cardTarget?.kind === 'card' && cardTarget.categoryId === category.id ? cardTarget.position : null}
                       wasDragging={wasDragging}
@@ -408,7 +429,7 @@ function Shelf({
                     />
                   ))}
                   {/* 列の下の空いているところ: カードを落とすと、この列のいちばん下へ */}
-                  <ColumnEnd column={i} disabled={filtering} marked={cardTarget?.kind === 'end' && cardTarget.column === i} />
+                  <ColumnEnd column={i} disabled={filtering || readOnly} marked={cardTarget?.kind === 'end' && cardTarget.column === i} />
                 </div>
               ))}
             </div>

@@ -28,6 +28,10 @@ interface CategoryWidgetProps {
   links: Link[]
   /** 検索中など、並び替えやその場での追加をさせないとき */
   readOnly?: boolean
+  /** 検索やお気に入りで絞り込んでいる（リンクが無いときの文を変える） */
+  filtered?: boolean
+  /** 閲覧専用（星を付ける・整理するも出さない） */
+  viewOnly?: boolean
   /** リンクを落とす位置の目印 */
   indicator: LinkDropIndicator
   /** カードを落とす先として選ばれている */
@@ -47,6 +51,8 @@ export function CategoryWidget({
   category,
   links,
   readOnly = false,
+  filtered = false,
+  viewOnly = false,
   indicator,
   cardDropEdge = null,
   wasDragging,
@@ -122,15 +128,17 @@ export function CategoryWidget({
           {category.name}
         </h2>
         <span className="flex-shrink-0 text-[11px] text-neutral-500">{links.length}</span>
-        <button
-          type="button"
-          onClick={() => onManage(category)}
-          aria-label={m.manageCard(category.name)}
-          title={m.manageCardHint}
-          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-200 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100"
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-        </button>
+        {!viewOnly && (
+          <button
+            type="button"
+            onClick={() => onManage(category)}
+            aria-label={m.manageCard(category.name)}
+            title={m.manageCardHint}
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-200 md:opacity-0 md:group-hover/card:opacity-100 md:focus-visible:opacity-100"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </header>
 
       {/* リンク一覧 */}
@@ -142,7 +150,7 @@ export function CategoryWidget({
               listIndicator ? 'border-neutral-500' : 'border-neutral-800',
             )}
           >
-            {readOnly ? m.noLinksMatch : m.noLinksYet}
+            {filtered ? m.noLinksMatch : m.noLinksYet}
           </p>
         )}
         <ul>
@@ -151,6 +159,7 @@ export function CategoryWidget({
               key={link.id}
               link={link}
               readOnly={readOnly}
+              viewOnly={viewOnly}
               renaming={renamingId === link.id}
               indicator={
                 indicator?.kind === 'link' && indicator.linkId === link.id ? indicator.position : null
@@ -196,6 +205,7 @@ export function CategoryWidget({
 interface LinkRowProps {
   link: Link
   readOnly: boolean
+  viewOnly: boolean
   renaming: boolean
   indicator: 'before' | 'after' | null
   wasDragging: () => boolean
@@ -203,7 +213,7 @@ interface LinkRowProps {
   onRenameDone: (title: string) => void
 }
 
-function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onRenameDone }: LinkRowProps) {
+function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, onEdit, onRenameDone }: LinkRowProps) {
   const { updateLink, recordAccess } = useLinkShelf()
   const m = useMessages()
   const isText = link.kind === 'text'
@@ -305,6 +315,14 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
           </a>
           )}
           <div className="flex flex-shrink-0 items-center pr-1">
+            {viewOnly ? (
+              // 閲覧専用: 星は印として見せるだけ（押せない）
+              link.isFavorited && (
+                <span role="img" aria-label={m.favoriteHint} title={m.favoriteHint} className="flex h-6 w-6 items-center justify-center text-amber-400">
+                  <Star className="h-3 w-3 fill-amber-400" />
+                </span>
+              )
+            ) : (
             <button
               type="button"
               onClick={() => void updateLink(link.id, { isFavorited: !link.isFavorited })}
@@ -320,6 +338,7 @@ function LinkRow({ link, readOnly, renaming, indicator, wasDragging, onEdit, onR
             >
               <Star className={cn('h-3 w-3', link.isFavorited && 'fill-amber-400')} />
             </button>
+            )}
             {!readOnly && (
               <button
                 type="button"
