@@ -1,9 +1,10 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { ChevronDown, FilePlus, FileText, GripVertical, Info, Pencil, Plus, Settings2, Star } from 'lucide-react'
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { ChevronDown, FilePlus, FileText, GripVertical, ImagePlus, Info, Pencil, Plus, Settings2, Star } from 'lucide-react'
+import { type ClipboardEvent, type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import type { Category, Link } from '../types'
 import { cn } from '../utils/cn'
-import { safeExternalUrl } from '../utils/url'
+import { isSafeUrl, isSameOrigin, safeExternalUrl } from '../utils/url'
+import { useOptions } from '../options'
 import { categoryColorClass } from '../categoryColors'
 import {
   cardDragId,
@@ -69,6 +70,56 @@ export function CategoryWidget({
 }: CategoryWidgetProps) {
   const { addLinkFromUrl, addLink, updateLink } = useLinkShelf()
   const m = useMessages()
+  const { uploadImage } = useOptions()
+  /** 画像を受け付けるか（uploadImage があって、並べ替えなどを止めていないとき） */
+  const canUpload = !!uploadImage && !readOnly && !collapsed
+  const imageInput = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+
+  const upload = async (file: File | undefined) => {
+    if (!file || !uploadImage) return
+    if (!IMAGE_TYPES.includes(file.type)) {
+      setUploadError(m.imageOnly)
+      return
+    }
+    setUploading(true)
+    setUploadError('')
+    try {
+      const result = await uploadImage(file, { categoryId: category.id })
+      // 相対の URL（/images/a.jpg など）は、今のページを基準にして絶対の URL にする
+      const url = typeof location !== 'undefined' ? new URL(result.url, location.href).toString() : result.url
+      if (!isSafeUrl(url)) throw new Error()
+      await addLink({ categoryId: category.id, title: result.title?.trim() || m.imageTitle(todayString()), url })
+    } catch (e) {
+      const detail = e instanceof Error && e.message && e.message.length <= 80 ? e.message : ''
+      setUploadError(m.uploadFailed(detail))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /** 画像の貼り付けだけを横取りする（文字や URL の貼り付けは、今までどおり） */
+  const onPaste = (e: ClipboardEvent<HTMLElement>) => {
+    if (!canUpload) return
+    const file = imageFileOf(e.clipboardData)
+    if (!file) return
+    e.preventDefault()
+    void upload(file)
+  }
+  const hasFiles = (e: DragEvent<HTMLElement>) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
+  const onDragOver = (e: DragEvent<HTMLElement>) => {
+    if (!canUpload || !hasFiles(e)) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  const onDrop = (e: DragEvent<HTMLElement>) => {
+    if (!canUpload || !hasFiles(e)) return
+    e.preventDefault()
+    setDragOver(false)
+    void upload(e.dataTransfer.files?.[0])
+  }
   const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const cardDrag = useDraggable({
@@ -97,10 +148,17 @@ export function CategoryWidget({
       }}
       aria-label={category.name}
       data-ls-category={category.id}
+      // 画像を受け付けるときは、カードにフォーカスを当てて貼り付けられるようにする
+      tabIndex={canUpload ? 0 : undefined}
+      onPaste={onPaste}
+      onDragOver={onDragOver}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
       className={cn(
         // 上の「カテゴリの帯」から飛んだとき、帯の下にカードの頭が来るように
         'group/card relative scroll-mt-[calc(var(--ls-sticky-top,0px)+3.5rem)] rounded-xl border bg-neutral-900 transition-colors',
-        'border-neutral-800',
+        dragOver ? 'border-accent-500' : 'border-neutral-800',
+        canUpload && 'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
         cardDrag.isDragging && 'opacity-40',
       )}
     >
@@ -203,9 +261,34 @@ export function CategoryWidget({
         )}
       </div>
 
+      {/* 画像のアップロード中・失敗 */}
+      {(uploading || uploadError) && (
+        <p
+          role={uploadError ? 'alert' : 'status'}
+          className={cn('mx-4 mb-2 text-[11px]', uploadError ? 'text-red-400' : 'text-neutral-500')}
+        >
+          {uploading ? m.uploading : uploadError}
+        </p>
+      )}
+      {canUpload && (
+        <input
+          ref={imageInput}
+          type="file"
+          accept={IMAGE_TYPES.join(',')}
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => {
+            void upload(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+      )}
+
       {/* その場で追加 */}
       {!readOnly && (
         <QuickAdd
+          onPickImage={canUpload && !uploading ? () => imageInput.current?.click() : undefined}
           onAdd={async (url) => {
             const link = await addLinkFromUrl(category.id, url)
             setRenamingId(link.id)
@@ -244,6 +327,9 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
   const m = useMessages()
   const isText = link.kind === 'text'
   const href = isText ? undefined : safeExternalUrl(link.url)
+  const { openLink, sameOriginInSameTab } = useOptions()
+  /** 同じタブで開くか（sameOriginInSameTab のとき、同じサイトの URL だけ） */
+  const sameTab = !!href && !!sameOriginInSameTab && isSameOrigin(href)
   const [viewing, setViewing] = useState(false)
   /** 1 行のテキストを、その場で書き換えている */
   const [inlineEditing, setInlineEditing] = useState(false)
@@ -322,8 +408,8 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
           ) : (
           <a
             href={href}
-            target="_blank"
-            rel="noopener noreferrer"
+            target={sameTab ? undefined : '_blank'}
+            rel={sameTab ? undefined : 'noopener noreferrer'}
             draggable={false}
             title={`${link.title}\n${link.url}${link.description ? `\n\n${link.description}` : ''}`}
             onClick={(e) => {
@@ -332,11 +418,16 @@ function LinkRow({ link, readOnly, viewOnly, renaming, indicator, wasDragging, o
                 return
               }
               void recordAccess(link.id)
+              // 開き方を組み込む側が決めるとき（href は isSafeUrl を通したものだけ）
+              if (openLink) {
+                e.preventDefault()
+                openLink(href, link)
+              }
             }}
             className="flex min-w-0 flex-1 touch-manipulation select-none items-center [-webkit-touch-callout:none] gap-2.5 px-2 py-1.5 text-sm text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 rounded-md"
             {...(readOnly ? {} : { ...drag.attributes, ...drag.listeners, role: undefined, tabIndex: undefined })}
           >
-            <SiteIcon url={link.url} title={link.title} />
+            <LinkIcon link={link} />
             <span className="truncate">{link.title}</span>
           </a>
           )}
@@ -487,10 +578,13 @@ export function QuickAdd({
   onAdd,
   onAddText,
   onWriteText,
+  onPickImage,
 }: {
   onAdd: (url: string) => Promise<void>
   onAddText: (t: { title: string; text: string }) => Promise<void>
   onWriteText: () => Promise<void>
+  /** 「画像を追加」を押したとき（無ければボタンを出さない） */
+  onPickImage?: () => void
 }) {
   const m = useMessages()
   const [showTip, setShowTip] = useState(false)
@@ -540,15 +634,16 @@ export function QuickAdd({
 
   if (!open) {
     return (
-      <div className="px-2 pb-2">
+      <div className="flex items-center gap-2 px-2 pb-2">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
         >
-          <Plus className="h-4 w-4" />
-          {m.addLinkOrText}
+          <Plus className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">{m.addLinkOrText}</span>
         </button>
+        {onPickImage && <ImageButton label={m.addImage} onClick={onPickImage} />}
       </div>
     )
   }
@@ -605,6 +700,19 @@ export function QuickAdd({
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           {m.dropTxt}
         </button>
+        {onPickImage && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              onPickImage()
+            }}
+            className="flex items-center gap-1.5 rounded-md px-1 py-1 text-xs text-neutral-400 transition-colors hover:text-neutral-200"
+          >
+            <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+            {m.addImage}
+          </button>
+        )}
         {/* PDF・画像の置き方（マウスを乗せて少しすると出る。スマホは押すと出る） */}
         <span className="group/tip relative ml-auto">
           <button
@@ -631,5 +739,45 @@ export function QuickAdd({
         </span>
       </div>
     </div>
+  )
+}
+
+// ─── 画像 ───────────────────────────────────────────────────
+
+/** 受け付ける画像の種類 */
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+/** 貼り付けたものの中から、受け付ける画像を 1 つ取り出す（無ければ null） */
+function imageFileOf(data: DataTransfer | null): File | null {
+  if (!data) return null
+  for (const item of Array.from(data.items ?? [])) {
+    if (item.kind === 'file' && IMAGE_TYPES.includes(item.type)) {
+      const file = item.getAsFile()
+      if (file) return file
+    }
+  }
+  for (const file of Array.from(data.files ?? [])) {
+    if (IMAGE_TYPES.includes(file.type)) return file
+  }
+  return null
+}
+
+/** 今日の日付（YYYY/MM/DD） */
+function todayString(): string {
+  const d = new Date()
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** 「画像を追加」のボタン（枠線つき） */
+function ImageButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-shrink-0 items-center gap-1.5 rounded-md border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 transition-colors hover:bg-neutral-800 hover:text-neutral-100"
+    >
+      <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+      {label}
+    </button>
   )
 }

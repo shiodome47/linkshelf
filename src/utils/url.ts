@@ -36,3 +36,17 @@ export function getDomain(url: string): string {
     return url
   }
 }
+
+/**
+ * url が origin（既定は今のページ）と同じオリジンか。読めない URL は false。
+ * サーバー側の描画など、location の無いところでは false
+ */
+export function isSameOrigin(url: string, origin?: string): boolean {
+  const base = origin ?? (typeof location !== 'undefined' ? location.origin : undefined)
+  if (!base) return false
+  try {
+    return new URL(url, base).origin === new URL(base).origin
+  } catch {
+    return false
+  }
+}

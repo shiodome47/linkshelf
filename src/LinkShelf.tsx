@@ -39,6 +39,7 @@ import { groupLinksByCategory, type FetchTitle } from './store'
 import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
 import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
+import { OptionsProvider, type UploadImage } from './options'
 import { ThemeProvider, type LinkShelfTheme } from './theme'
 import { cn } from './utils/cn'
 
@@ -75,6 +76,18 @@ export interface LinkShelfProps {
    * 1 つのサイトに <LinkShelf> を 2 つ置くときは、別の名前にする（既定は 'linkshelf'）
    */
   collapseKey?: string
+  /**
+   * 画像を受け取って置き、その URL を返す関数。渡すと、各カードに「画像を追加」が出る
+   * （閲覧専用のときは出ない）。ドラッグ＆ドロップ・貼り付けでも受け付ける。
+   * 大きさの上限などの確認は、この関数の中で行う
+   */
+  uploadImage?: UploadImage
+  /** リンクのアイコンを差し替える。null を返すと既定の表示 */
+  linkIcon?: (link: Link) => ReactNode | null
+  /** リンクを開く方法を差し替える（危ない URL のときは呼ばれない） */
+  openLink?: (url: string, link: Link) => void
+  /** true のとき、同じサイト（オリジン）の URL は同じタブで開く */
+  sameOriginInSameTab?: boolean
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
   actions?: ReactNode
   /** いちばん外側の要素に足す class */
@@ -99,6 +112,10 @@ export function LinkShelf({
   jumpBar = 'auto',
   collapsible = false,
   collapseKey = 'linkshelf',
+  uploadImage,
+  linkIcon,
+  openLink,
+  sameOriginInSameTab = false,
   actions,
   className,
 }: LinkShelfProps) {
@@ -108,6 +125,7 @@ export function LinkShelf({
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
       <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
         <ThemeProvider value={theme}>
+          <OptionsProvider value={{ uploadImage, linkIcon, openLink, sameOriginInSameTab }}>
           <Shelf
             title={title}
             theme={theme}
@@ -118,6 +136,7 @@ export function LinkShelf({
             actions={actions}
             className={className}
           />
+          </OptionsProvider>
         </ThemeProvider>
       </LocaleProvider>
     </LinkShelfProvider>
