@@ -59,6 +59,7 @@ export function App() {
 | `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
 | `locale` | 画面の言葉。`'ja'`（日本語）/ `'en'`（英語） | `'ja'` |
 | `title` | 見出し | `'リンク集'`（英語では `'Links'`） |
+| `readOnly` | 閲覧専用（下の「閲覧専用にする」） | `false` |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -103,6 +104,16 @@ const syncedStorage: LinkShelfStorage = {
   subscribe: (onChange) => mySync.onRemoteChange(onChange),
 }
 ```
+
+### 閲覧専用にする
+
+`readOnly` を付けると、リンクを開く・検索・お気に入りだけ表示はできて、追加・編集・削除・並べ替え・星を付けることはできなくなります。サイトを見に来た人には閲覧専用、編集する人には編集できる画面、のように使い分けられます。
+
+```tsx
+<LinkShelf storage={siteStorage} readOnly={!isEditor} />
+```
+
+**注意**：`readOnly` は画面のボタンを隠すだけです。書き換えを本当に防ぐには、保存先（サーバー）の側でも「編集する人以外の書き込みを断る」ようにしてください。
 
 ### ページの名前を取る
 
@@ -192,6 +203,7 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
 | `locale` | Language of the labels: `'ja'` (Japanese) / `'en'` (English) | `'ja'` |
 | `title` | Heading | `'リンク集'` (`'Links'` in English) |
+| `readOnly` | View-only mode (see below) | `false` |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 
@@ -209,6 +221,16 @@ import { LinkShelf, indexedDbStorage, memoryStorage } from 'linkshelf'
 To use your own backend, pass an object that implements `LinkShelfStorage`
 (`loadAll`, `putCategory`, `deleteCategory`, `putLink`, `deleteLinks`, and optionally `bulkPut`).
 Add an optional `subscribe(onChange)` that returns an unsubscribe function, and the shelf reloads whenever your storage changes from outside (for example, when another device syncs).
+
+### View-only mode
+
+With `readOnly`, visitors can open links, search and show favorites only, but cannot add, edit, delete, reorder or star anything.
+
+```tsx
+<LinkShelf storage={siteStorage} readOnly={!isEditor} />
+```
+
+`readOnly` only hides the editing UI. To really prevent changes, your storage (server) must also reject writes from anyone but the editors.
 
 ### Page titles
 

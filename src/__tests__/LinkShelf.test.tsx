@@ -212,3 +212,63 @@ describe('お気に入りだけ表示', () => {
     expect(screen.getByText(/お気に入りのリンクはまだありません/)).toBeInTheDocument()
   })
 })
+
+describe('閲覧専用（readOnly）', () => {
+  const data = () =>
+    memoryStorage({
+      categories: [cat('c1', '仕事', 0), cat('c2', '空のカード', 1)],
+      links: [
+        link('l1', 'c1', 'Example', 'https://example.com/', { isFavorited: true }),
+        link('l2', 'c1', 'ふつうのリンク', 'https://example.net/', { order: 1 }),
+        link('l3', 'c1', 'メモ', '', { order: 2, kind: 'text', text: 'メモ' }),
+      ],
+    })
+
+  it('リンクは開けて、追加・編集・整理・並べ替えのボタンは出さない', async () => {
+    render(<LinkShelf storage={data()} readOnly fetchTitle={async () => null} />)
+    expect((await screen.findByText('Example')).closest('a')).toHaveAttribute('href', 'https://example.com/')
+    expect(screen.queryByRole('button', { name: /カテゴリを追加/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '名前を取り直す' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /リンク・テキストを追加/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /を整理する/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /を並び替える/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /を編集/ })).not.toBeInTheDocument()
+    // 中身の無いカードは「まだありません」（「一致するリンクはありません」ではない）
+    expect(screen.getByText('リンクはまだありません')).toBeInTheDocument()
+  })
+
+  it('星は印として見せるだけで、押して変えることはできない', async () => {
+    const storage = data()
+    render(<LinkShelf storage={storage} readOnly />)
+    await screen.findByText('Example')
+    expect(screen.queryByRole('button', { name: /お気に入りに追加|お気に入りを解除/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'お気に入り' })).toBeInTheDocument()
+  })
+
+  it('検索と「お気に入りだけ表示」は使える', async () => {
+    render(<LinkShelf storage={data()} readOnly />)
+    await screen.findByText('ふつうのリンク')
+    fireEvent.click(screen.getByRole('button', { name: 'お気に入りだけ表示' }))
+    expect(screen.queryByText('ふつうのリンク')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'お気に入りだけ表示' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'リンクを検索' }), { target: { value: 'ふつう' } })
+    expect(screen.getByText('ふつうのリンク')).toBeInTheDocument()
+    expect(screen.queryByText('Example')).not.toBeInTheDocument()
+  })
+
+  it('テキストは全文を読めるが、書き換えはできない', async () => {
+    render(<LinkShelf storage={data()} readOnly />)
+    const row = await screen.findByText('メモ')
+    fireEvent.doubleClick(row)
+    expect(screen.queryByRole('textbox', { name: '1 行のテキスト' })).not.toBeInTheDocument()
+    fireEvent.click(row)
+    expect(await screen.findByTestId('text-viewer')).toHaveTextContent('メモ')
+    expect(screen.queryByRole('button', { name: '編集' })).not.toBeInTheDocument()
+  })
+
+  it('空のときは、カテゴリを作る案内を出さない', async () => {
+    render(<LinkShelf storage={memoryStorage()} readOnly />)
+    expect(await screen.findByText('まだリンクはありません')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /カテゴリを追加/ })).not.toBeInTheDocument()
+  })
+})
