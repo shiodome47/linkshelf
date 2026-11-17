@@ -61,6 +61,7 @@ function App() {
       theme={theme}
       locale={LOCALE}
       collapsible
+      checklist
       title="linkshelf"
       actions={<ThemeButton theme={theme} onChange={setTheme} />}
     />

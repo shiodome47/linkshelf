@@ -71,7 +71,7 @@ export function CategoryWidget({
 }: CategoryWidgetProps) {
   const { addLinkFromUrl, addLink, updateLink, clearDoneChecks } = useLinkShelf()
   const m = useMessages()
-  const { uploadImage } = useOptions()
+  const { uploadImage, checklist } = useOptions()
   /** 今日の日付（日付が変わったら描き直して、毎日の項目のチェックを外す） */
   const today = useToday()
   const checks = links.filter((l) => l.kind === 'check')
@@ -338,9 +338,13 @@ export function CategoryWidget({
       {!readOnly && (
         <QuickAdd
           defaultCheck={defaultCheck}
-          onAddCheck={async ({ title, repeat }) => {
-            await addLink({ categoryId: category.id, title, url: '', kind: 'check', repeat })
-          }}
+          onAddCheck={
+            checklist
+              ? async ({ title, repeat }) => {
+                  await addLink({ categoryId: category.id, title, url: '', kind: 'check', repeat })
+                }
+              : undefined
+          }
           onPickImage={canUpload && !uploading ? () => imageInput.current?.click() : undefined}
           onAdd={async (url) => {
             const link = await addLinkFromUrl(category.id, url)

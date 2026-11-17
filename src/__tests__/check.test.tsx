@@ -201,6 +201,21 @@ describe('<LinkShelf /> のチェック項目', () => {
     expect((await storage.loadAll()).links.find((l) => l.id === 'k1')?.checkedAt).toBeTruthy()
   })
 
+  it('checklist を付けたときだけ、入力欄に「チェック項目にする」が出る', async () => {
+    const { unmount } = render(<LinkShelf storage={sample()} />)
+    let card = await screen.findByRole('region', { name: '今日' })
+    fireEvent.click(within(card).getByRole('button', { name: /リンク・テキストを追加/ }))
+    expect(within(card).queryByRole('button', { name: /チェック項目にする/ })).not.toBeInTheDocument()
+    // 付けていなくても、すでにあるチェック項目は出す
+    expect(within(card).getByRole('checkbox', { name: /瞑想/ })).toBeInTheDocument()
+    unmount()
+
+    render(<LinkShelf storage={sample()} checklist />)
+    card = await screen.findByRole('region', { name: '今日' })
+    fireEvent.click(within(card).getByRole('button', { name: /チェック項目を追加/ }))
+    expect(within(card).getByRole('button', { name: /チェック項目にする/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('済んだ項目をまとめて消せる（確認してから）', async () => {
     const storage = sample()
     render(<LinkShelf storage={storage} />)
