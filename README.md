@@ -36,6 +36,7 @@ export function App() {
 - URL を入れて Enter でリンク、それ以外の 1 行は 1 行メモ（ダブルクリックで書き換え）
 - 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン
 - お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
+- スマホでは、カテゴリの帯で各カードへ飛べる。カードをたためるようにもできる
 - ライト / ダーク表示、日本語 / 英語の表示
 
 ### こんな使い方も
@@ -60,6 +61,9 @@ export function App() {
 | `locale` | 画面の言葉。`'ja'`（日本語）/ `'en'`（英語） | `'ja'` |
 | `title` | 見出し | `'リンク集'`（英語では `'Links'`） |
 | `readOnly` | 閲覧専用（下の「閲覧専用にする」） | `false` |
+| `jumpBar` | カテゴリの帯（下の「スマホで見やすくする」）。`'auto'` / `'always'` / `'never'` | `'auto'` |
+| `collapsible` | カードをたためるようにする | `false` |
+| `collapseKey` | たたんだカードを覚えておく名前（1 つのサイトに 2 つ置くときは別の名前に） | `'linkshelf'` |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -114,6 +118,25 @@ const syncedStorage: LinkShelfStorage = {
 ```
 
 **注意**：`readOnly` は画面のボタンを隠すだけです。書き換えを本当に防ぐには、保存先（サーバー）の側でも「編集する人以外の書き込みを断る」ようにしてください。
+
+### スマホで見やすくする
+
+スマホなど狭い画面では、カードが縦に 1 列に並びます。一覧しやすくするために、2 つの機能があります。
+
+- **カテゴリの帯**（`jumpBar`）：カテゴリ名を横に並べた帯を出し、押すとそのカードへ飛びます。下へスクロールしても、帯は上に残ります。既定（`'auto'`）では、1 列で並ぶ狭い画面のときだけ出ます。`'always'` でいつも、`'never'` で出さないようにできます。
+- **カードをたたむ**（`collapsible`）：カードの見出しの右にボタンが出て、中身をたためます。たたんだカードは、見る人のブラウザに覚えておきます（ほかの人には影響しません）。検索中・お気に入りだけ表示のときは、見つかったものが隠れないように、すべてひらきます。
+
+```tsx
+<LinkShelf collapsible jumpBar="auto" />
+```
+
+アプリの上に固定のヘッダーがあって、帯がその下に隠れるときは、帯を止める位置を CSS の変数で指定します。
+
+```css
+.linkshelf {
+  --ls-sticky-top: 56px; /* 固定のヘッダーの高さ */
+}
+```
 
 ### ページの名前を取る
 
@@ -176,6 +199,7 @@ const syncedStorage: LinkShelfStorage = {
 - Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
 - Longer texts (write one or drop a .txt), search, site icons
 - Favorites (star), with a button next to search to show favorites only
+- On phones, a category bar to jump between cards; cards can also be made collapsible
 - Light / dark theme, Japanese / English labels
 
 ### Ideas
@@ -204,6 +228,9 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `locale` | Language of the labels: `'ja'` (Japanese) / `'en'` (English) | `'ja'` |
 | `title` | Heading | `'リンク集'` (`'Links'` in English) |
 | `readOnly` | View-only mode (see below) | `false` |
+| `jumpBar` | Category bar for narrow screens: `'auto'` / `'always'` / `'never'` | `'auto'` |
+| `collapsible` | Let viewers collapse cards | `false` |
+| `collapseKey` | Name used to remember collapsed cards (use different names for two shelves on one site) | `'linkshelf'` |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 
@@ -231,6 +258,15 @@ With `readOnly`, visitors can open links, search and show favorites only, but ca
 ```
 
 `readOnly` only hides the editing UI. To really prevent changes, your storage (server) must also reject writes from anyone but the editors.
+
+### Narrow screens
+
+On phones, cards stack in one column. Two options help:
+
+- **Category bar** (`jumpBar`): a sticky row of category names; tap one to jump to its card. `'auto'` (default) shows it only when cards are in one column.
+- **Collapsible cards** (`collapsible`): a button on each card header folds its contents. The state is remembered in the viewer's browser. Cards open automatically while searching or showing favorites only.
+
+If your app has a fixed header, set `--ls-sticky-top` on `.linkshelf` to its height so the bar stops below it.
 
 ### Page titles
 
