@@ -91,3 +91,15 @@ export function isOneLineText(link: { kind?: string; title: string; text?: strin
   const text = link.text ?? ''
   return text.trim() !== '' && !text.includes('\n') && link.title === oneLineTitle(text)
 }
+
+/** 画像だとみなす拡張子 */
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp|gif)$/i
+
+/** URL のパスが画像の拡張子（.jpg / .jpeg / .png / .webp / .gif）で終わるか */
+export function isImageUrl(url: string): boolean {
+  try {
+    return IMAGE_EXTENSIONS.test(new URL(url).pathname)
+  } catch {
+    return false
+  }
+}

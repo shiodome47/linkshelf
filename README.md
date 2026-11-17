@@ -37,6 +37,7 @@ export function App() {
 - 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン
 - お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
 - スマホでは、カテゴリの帯で各カードへ飛べる。カードをたためるようにもできる
+- 画像の追加（置き場所は組み込む側が用意）、画像リンクの印、リンクの開き方の指定（どれも選んで使う）
 - ライト / ダーク表示、日本語 / 英語の表示
 
 ### こんな使い方も
@@ -64,6 +65,10 @@ export function App() {
 | `jumpBar` | カテゴリの帯（下の「スマホで見やすくする」）。`'auto'` / `'always'` / `'never'` | `'auto'` |
 | `collapsible` | カードをたためるようにする | `false` |
 | `collapseKey` | たたんだカードを覚えておく名前（1 つのサイトに 2 つ置くときは別の名前に） | `'linkshelf'` |
+| `uploadImage` | 画像を受け取って置き、URL を返す関数（下の「画像を追加する」） | なし（ボタンを出さない） |
+| `linkIcon` | リンクのアイコンを差し替える `(link) => ReactNode \| null` | なし |
+| `openLink` | リンクを開く方法を差し替える `(url, link) => void` | なし（新しいタブで開く） |
+| `sameOriginInSameTab` | 同じサイトの URL は同じタブで開く | `false` |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
@@ -138,6 +143,52 @@ const syncedStorage: LinkShelfStorage = {
 }
 ```
 
+### 画像を追加する
+
+`uploadImage` を渡すと、各カードに「画像を追加」のボタンが出ます（閲覧専用のときは出ません）。カードへのドラッグ＆ドロップや、カードを選んだ状態での貼り付け（Ctrl+V / ⌘V）でも受け付けます。文字や URL の貼り付けは、今までどおりです。
+
+画像を置く場所（サーバー）は、組み込む側が用意します。`uploadImage` は画像を受け取って置き、その URL を返します。返ってきた URL で、カードの末尾にリンクを足します（名前を返さなければ「画像（YYYY/MM/DD）」）。
+
+```tsx
+<LinkShelf
+  uploadImage={async (file, { categoryId }) => {
+    // 大きさの上限などの確認は、ここで行う
+    if (file.size > 5 * 1024 * 1024) throw new Error('5MB までです')
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch('/api/images', { method: 'POST', body })
+    if (!res.ok) throw new Error('アップロードできませんでした')
+    const { url } = await res.json()
+    return { url } // 相対の URL（/images/a.jpg）でもよい
+  }}
+/>
+```
+
+- 受け付けるのは JPEG・PNG・WebP です。
+- 失敗した（エラーを投げた）ときは、カードに短いエラー文を出し、リンクは足しません。エラーの文が短ければ、そのまま添えて出します。
+
+### 画像リンクのアイコン
+
+URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは、サイトのアイコンの代わりに画像の印を出します。アイコンを自分で決めたいときは `linkIcon` を使います（`null` を返すと既定の表示）。
+
+```tsx
+<LinkShelf linkIcon={(link) => (link.url.endsWith('.pdf') ? <span>📄</span> : null)} />
+```
+
+### リンクの開き方
+
+既定では、リンクは新しいタブで開きます。
+
+```tsx
+// 同じサイト（オリジン）のリンクだけ、同じタブで開く
+<LinkShelf sameOriginInSameTab />
+
+// 開き方を自分で決める
+<LinkShelf openLink={(url, link) => window.location.assign(url)} />
+```
+
+どちらの場合も、`javascript:` などの危ない URL は開きません（`openLink` も呼ばれません）。
+
 ### ページの名前を取る
 
 ブラウザからは、ほかのサイトのページを直接読めません（CORS という制限）。名前を自動で付けたいときは、サーバー側で名前を取る処理を用意して、`fetchTitle` で渡します。
@@ -200,6 +251,7 @@ const syncedStorage: LinkShelfStorage = {
 - Longer texts (write one or drop a .txt), search, site icons
 - Favorites (star), with a button next to search to show favorites only
 - On phones, a category bar to jump between cards; cards can also be made collapsible
+- Optional image uploads (you provide the storage), image link icons, and control over how links open
 - Light / dark theme, Japanese / English labels
 
 ### Ideas
@@ -231,6 +283,10 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `jumpBar` | Category bar for narrow screens: `'auto'` / `'always'` / `'never'` | `'auto'` |
 | `collapsible` | Let viewers collapse cards | `false` |
 | `collapseKey` | Name used to remember collapsed cards (use different names for two shelves on one site) | `'linkshelf'` |
+| `uploadImage` | `(file, { categoryId }) => Promise<{ url, title? }>` that stores an image (see below) | none (no button) |
+| `linkIcon` | `(link) => ReactNode \| null` to override link icons | none |
+| `openLink` | `(url, link) => void` to control how links open | none (new tab) |
+| `sameOriginInSameTab` | Open same-origin URLs in the same tab | `false` |
 | `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
 | `className` | Extra class on the root element | none |
 
@@ -267,6 +323,20 @@ On phones, cards stack in one column. Two options help:
 - **Collapsible cards** (`collapsible`): a button on each card header folds its contents. The state is remembered in the viewer's browser. Cards open automatically while searching or showing favorites only.
 
 If your app has a fixed header, set `--ls-sticky-top` on `.linkshelf` to its height so the bar stops below it.
+
+### Images
+
+Pass `uploadImage` to show an “Add image” button on each card (hidden in `readOnly`). Images can also be dropped on a card or pasted while the card has focus; text and URL pastes work as before. Your function stores the file and returns its URL (relative URLs are fine), and a link is added at the end of the card, titled “Image (YYYY/MM/DD)” unless you return a `title`. If it throws, a short error is shown on the card and nothing is added. JPEG, PNG and WebP are accepted; check size limits inside your function.
+
+```tsx
+<LinkShelf uploadImage={async (file) => ({ url: await myUpload(file) })} />
+```
+
+Links whose path ends in `.jpg`, `.jpeg`, `.png`, `.webp` or `.gif` get an image icon. Use `linkIcon` to override icons (return `null` for the default).
+
+### Opening links
+
+Links open in a new tab by default. `sameOriginInSameTab` opens same-origin URLs in the current tab, and `openLink(url, link)` lets you decide yourself. Unsafe URLs such as `javascript:` are never opened either way.
 
 ### Page titles
 

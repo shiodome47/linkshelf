@@ -1,7 +1,9 @@
-import { FileText } from 'lucide-react'
+import { FileText, Image as ImageGlyph } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../utils/cn'
-import { faviconUrl, titleFromUrl } from '../linkUtils'
+import { faviconUrl, isImageUrl, titleFromUrl } from '../linkUtils'
+import { useOptions } from '../options'
+import type { Link } from '../types'
 
 /** 頭文字タイルの色（ドメインごとに固定）。明暗どちらのテーマでも白文字が読める濃さ */
 const TILE_COLORS = [
@@ -65,10 +67,30 @@ export function SiteIcon({ url, title, className }: SiteIconProps) {
   )
 }
 
-/** リンク集の 1 行のアイコン（アプリの中に保存したテキストは文書のアイコン） */
-export function LinkIcon({ link, className }: { link: { url: string; title: string; kind?: 'text' }; className?: string }) {
+/**
+ * リンク集の 1 行のアイコン。
+ * - 組み込む側が linkIcon を渡していて、null 以外を返したら、それを出す
+ * - テキストは文書のアイコン、画像の URL（.jpg など）は画像の印、それ以外はサイトのアイコン
+ */
+export function LinkIcon({ link, className }: { link: Link; className?: string }) {
+  const { linkIcon } = useOptions()
+  const custom = linkIcon?.(link)
+  if (custom !== undefined && custom !== null) {
+    return <span className={cn('flex h-4 w-4 flex-shrink-0 items-center justify-center', className)}>{custom}</span>
+  }
   if (link.kind === 'text') {
     return <FileText aria-hidden="true" className={cn('h-4 w-4 flex-shrink-0 text-accent-400', className)} />
+  }
+  if (isImageUrl(link.url)) {
+    return (
+      <span
+        aria-hidden="true"
+        data-testid="image-link-icon"
+        className={cn('flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] bg-green-500/15 text-green-600', className)}
+      >
+        <ImageGlyph className="h-3 w-3" />
+      </span>
+    )
   }
   return <SiteIcon url={link.url} title={link.title} className={className} />
 }

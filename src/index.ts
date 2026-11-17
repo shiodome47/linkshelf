@@ -1,7 +1,7 @@
 // linkshelf の入り口。外から使えるものは、ここから出す。
 
 /** 部品のバージョン */
-export const VERSION = '0.4.0'
+export const VERSION = '0.5.0'
 
 import './style.css'
 
@@ -10,6 +10,7 @@ export type { Category, Link } from './types'
 // 部品
 export { LinkShelf, type LinkShelfProps } from './LinkShelf'
 export type { LinkShelfTheme } from './theme'
+export type { UploadImage } from './options'
 export { MESSAGES, type LinkShelfLocale, type LinkShelfMessages } from './i18n'
 
 // 保存先の窓口
@@ -34,7 +35,7 @@ export {
 export { LinkShelfProvider, useLinkShelf, useLinkShelfStoreApi, type LinkShelfProviderProps } from './context'
 
 // 判定などの道具
-export { isSafeUrl, safeExternalUrl, openExternal } from './utils/url'
+export { isSafeUrl, safeExternalUrl, openExternal, isSameOrigin } from './utils/url'
 export {
   normalizeLinkInput,
   titleFromUrl,
@@ -42,5 +43,6 @@ export {
   faviconUrl,
   oneLineTitle,
   isOneLineText,
+  isImageUrl,
 } from './linkUtils'
 export { TEXT_LIMIT_BYTES, TEXT_ACCEPT, readTextFile, textLimitError } from './textFile'
