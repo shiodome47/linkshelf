@@ -36,6 +36,7 @@ import { layoutCards, moveCard, type CardLike } from './layout'
 import { indexedDbStorage } from './storage/indexedDb'
 import type { LinkShelfStorage } from './storage/types'
 import { groupLinksByCategory, type FetchTitle } from './store'
+import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
 import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
 import { ThemeProvider, type LinkShelfTheme } from './theme'
@@ -62,6 +63,18 @@ export interface LinkShelfProps {
    * 画面で隠すだけなので、書き換えを本当に防ぐには、保存先（サーバー）の側でも書き込みを断ること
    */
   readOnly?: boolean
+  /**
+   * カテゴリの帯（カテゴリ名を横に並べ、押すとそのカードへ飛ぶ。下へスクロールしても上に残る）。
+   * auto: 1 列で並ぶ狭い画面（スマホ）のときだけ出す（既定）／ always: いつも出す／ never: 出さない
+   */
+  jumpBar?: 'auto' | 'always' | 'never'
+  /** カードをたためるようにする（見出しの右にボタンが出る）。既定は false */
+  collapsible?: boolean
+  /**
+   * たたんだカードを覚えておく名前。見る人のブラウザ（localStorage）に保存する。
+   * 1 つのサイトに <LinkShelf> を 2 つ置くときは、別の名前にする（既定は 'linkshelf'）
+   */
+  collapseKey?: string
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
   actions?: ReactNode
   /** いちばん外側の要素に足す class */
@@ -83,6 +96,9 @@ export function LinkShelf({
   locale = 'ja',
   theme = 'system',
   readOnly = false,
+  jumpBar = 'auto',
+  collapsible = false,
+  collapseKey = 'linkshelf',
   actions,
   className,
 }: LinkShelfProps) {
@@ -92,7 +108,16 @@ export function LinkShelf({
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
       <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
         <ThemeProvider value={theme}>
-          <Shelf title={title} theme={theme} readOnly={readOnly} actions={actions} className={className} />
+          <Shelf
+            title={title}
+            theme={theme}
+            readOnly={readOnly}
+            jumpBar={jumpBar}
+            collapsible={collapsible}
+            collapseKey={collapseKey}
+            actions={actions}
+            className={className}
+          />
         </ThemeProvider>
       </LocaleProvider>
     </LinkShelfProvider>
@@ -103,18 +128,26 @@ function Shelf({
   title,
   theme,
   readOnly,
+  jumpBar,
+  collapsible,
+  collapseKey,
   actions,
   className,
 }: {
   title?: string
   theme: LinkShelfTheme
   readOnly: boolean
+  jumpBar: 'auto' | 'always' | 'never'
+  collapsible: boolean
+  collapseKey: string
   actions?: ReactNode
   className?: string
 }) {
   const { categories, links, loaded, loadAll, watch, canFetchTitle, deleteCategory, deleteLinks, arrangeCategories, moveLink } =
     useLinkShelf()
   const m = useMessages()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [collapsedIds, toggleCollapsed, expand] = useCollapsed(collapsible ? collapseKey : null)
 
   // 保存先から読む（読めなかったときは、見出しの下に知らせる）
   const [loadError, setLoadError] = useState(false)
@@ -130,6 +163,8 @@ function Shelf({
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   /** 絞り込み中（検索・お気に入りだけ）は、並べ替えやその場での追加をさせない */
   const filtering = searching || favoritesOnly
+  /** たたんでいるか（絞り込み中は、見つかったものが隠れないように、すべてひらく） */
+  const isCollapsed = (id: string) => collapsible && !filtering && collapsedIds.has(id)
 
   // ─── ダイアログ状態 ───────────────────────────────────────
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
@@ -193,10 +228,18 @@ function Shelf({
   const columns = useMemo(
     () =>
       layoutCards(
-        visible.map((item) => ({ id: item.category.id, order: item.category.order, column: item.category.column, size: item.links.length, item })),
+        visible.map((item) => ({
+          id: item.category.id,
+          order: item.category.order,
+          column: item.category.column,
+          // たたんだカードは見出しだけの高さ
+          size: isCollapsed(item.category.id) ? 0 : item.links.length,
+          item,
+        })),
         columnCount,
       ).map((col) => col.map((c) => c.item)),
-    [visible, columnCount],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visible, columnCount, collapsedIds, filtering],
   )
   const cardLikes = useCallback(
     (): CardLike[] =>
@@ -317,7 +360,7 @@ function Shelf({
     editingLink !== null || deletingLinks !== null || deletingCategory !== null || retitling !== null
 
   return (
-    <div className={cn('linkshelf', className)} data-theme={theme}>
+    <div ref={rootRef} className={cn('linkshelf', className)} data-theme={theme}>
     <div className="bg-neutral-950 text-neutral-100">
       {/* ヘッダー */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-neutral-800 px-4 py-3 sm:px-6">
@@ -401,6 +444,21 @@ function Shelf({
             {searching ? m.noMatch(query.trim()) : m.noFavorites}
           </p>
         ) : (
+          <>
+          {(jumpBar === 'always' || (jumpBar === 'auto' && columnCount === 1)) && visible.length > 1 && (
+            <JumpBar
+              label={m.jumpTo}
+              categories={visible.map((v) => v.category)}
+              onJump={(id) => {
+                // たたんでいたら、ひらいてから飛ぶ
+                expand(id)
+                requestAnimationFrame(() => {
+                  const el = rootRef.current?.querySelector<HTMLElement>(`[data-ls-category="${CSS.escape(id)}"]`)
+                  el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+                })
+              }}
+            />
+          )}
           <DndContext
             sensors={sensors}
             collisionDetection={collision}
@@ -421,6 +479,9 @@ function Shelf({
                       readOnly={filtering || readOnly}
                       filtered={filtering}
                       viewOnly={readOnly}
+                      collapsible={collapsible}
+                      collapsed={isCollapsed(category.id)}
+                      onToggleCollapse={() => toggleCollapsed(category.id)}
                       indicator={indicator}
                       cardDropEdge={cardTarget?.kind === 'card' && cardTarget.categoryId === category.id ? cardTarget.position : null}
                       wasDragging={wasDragging}
@@ -448,6 +509,7 @@ function Shelf({
               )}
             </DragOverlay>
           </DndContext>
+          </>
         )}
       </div>
 
@@ -528,4 +590,80 @@ function ColumnEnd({ column, disabled, marked }: { column: number; disabled: boo
       {marked && <div aria-hidden="true" data-testid="card-drop-line" className="pointer-events-none absolute inset-x-1 -top-2.5 h-1 rounded-full bg-accent-500" />}
     </div>
   )
+}
+
+/** 上の「カテゴリの帯」。押すと、そのカードへ飛ぶ */
+function JumpBar({
+  label,
+  categories,
+  onJump,
+}: {
+  label: string
+  categories: Category[]
+  onJump: (id: string) => void
+}) {
+  return (
+    <nav
+      aria-label={label}
+      className="sticky top-[var(--ls-sticky-top,0px)] z-20 border-b border-neutral-800 bg-neutral-950"
+    >
+      <ul className="flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {categories.map((c) => (
+          <li key={c.id} className="flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => onJump(c.id)}
+              className="flex max-w-[12rem] items-center gap-1.5 rounded-full border border-neutral-800 bg-neutral-900 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-800"
+            >
+              <span aria-hidden="true" className={cn('h-2 w-2 flex-shrink-0 rounded-full', categoryColorClass(c.color))} />
+              <span className="truncate">{c.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+/**
+ * たたんだカードの id を、見る人のブラウザ（localStorage）に覚えておく。
+ * key が null のときは、たたむ機能を使わない。保存できない環境では、開いている間だけ覚える
+ */
+function useCollapsed(key: string | null): [Set<string>, (id: string) => void, (id: string) => void] {
+  const storageKey = key ? `linkshelf:collapsed:${key}` : null
+  const [ids, setIds] = useState<Set<string>>(() => {
+    if (!storageKey) return new Set()
+    try {
+      const raw = localStorage.getItem(storageKey)
+      const list = raw ? (JSON.parse(raw) as unknown) : []
+      return new Set(Array.isArray(list) ? list.filter((v): v is string => typeof v === 'string') : [])
+    } catch {
+      return new Set()
+    }
+  })
+  const save = (next: Set<string>) => {
+    if (!storageKey) return
+    try {
+      localStorage.setItem(storageKey, JSON.stringify([...next]))
+    } catch {
+      // 保存できなくても、開いている間は覚えている
+    }
+  }
+  const toggle = (id: string) =>
+    setIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      save(next)
+      return next
+    })
+  const expand = (id: string) =>
+    setIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      save(next)
+      return next
+    })
+  return [ids, toggle, expand]
 }

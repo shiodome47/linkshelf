@@ -60,6 +60,7 @@ function App() {
       fetchTitle={fetchTitle}
       theme={theme}
       locale={LOCALE}
+      collapsible
       title="linkshelf"
       actions={<ThemeButton theme={theme} onChange={setTheme} />}
     />

@@ -1,5 +1,5 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { FilePlus, FileText, GripVertical, Info, Pencil, Plus, Settings2, Star } from 'lucide-react'
+import { ChevronDown, FilePlus, FileText, GripVertical, Info, Pencil, Plus, Settings2, Star } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import type { Category, Link } from '../types'
 import { cn } from '../utils/cn'
@@ -32,6 +32,11 @@ interface CategoryWidgetProps {
   filtered?: boolean
   /** 閲覧専用（星を付ける・整理するも出さない） */
   viewOnly?: boolean
+  /** たたむボタンを出す */
+  collapsible?: boolean
+  /** たたんでいる（見出しだけを出す） */
+  collapsed?: boolean
+  onToggleCollapse?: () => void
   /** リンクを落とす位置の目印 */
   indicator: LinkDropIndicator
   /** カードを落とす先として選ばれている */
@@ -53,6 +58,9 @@ export function CategoryWidget({
   readOnly = false,
   filtered = false,
   viewOnly = false,
+  collapsible = false,
+  collapsed = false,
+  onToggleCollapse,
   indicator,
   cardDropEdge = null,
   wasDragging,
@@ -88,8 +96,10 @@ export function CategoryWidget({
         cardDrop.setNodeRef(node)
       }}
       aria-label={category.name}
+      data-ls-category={category.id}
       className={cn(
-        'group/card relative rounded-xl border bg-neutral-900 transition-colors',
+        // 上の「カテゴリの帯」から飛んだとき、帯の下にカードの頭が来るように
+        'group/card relative scroll-mt-[calc(var(--ls-sticky-top,0px)+3.5rem)] rounded-xl border bg-neutral-900 transition-colors',
         'border-neutral-800',
         cardDrag.isDragging && 'opacity-40',
       )}
@@ -106,7 +116,7 @@ export function CategoryWidget({
         />
       )}
       {/* 見出し */}
-      <header className="flex items-center gap-2 px-4 pb-2 pt-3.5">
+      <header className={cn('flex items-center gap-2 px-4 pt-3.5', collapsed ? 'pb-3.5' : 'pb-2')}>
         {!readOnly && (
           <button
             ref={cardDrag.setActivatorNodeRef}
@@ -139,8 +149,22 @@ export function CategoryWidget({
             <Settings2 className="h-3.5 w-3.5" />
           </button>
         )}
+        {collapsible && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? m.expandCard(category.name) : m.collapseCard(category.name)}
+            title={collapsed ? m.expandHint : m.collapseHint}
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
+          >
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', collapsed && '-rotate-90')} />
+          </button>
+        )}
       </header>
 
+      {!collapsed && (
+      <>
       {/* リンク一覧 */}
       <div ref={listDrop.setNodeRef} className="px-2 pb-1">
         {links.length === 0 && (
@@ -195,6 +219,8 @@ export function CategoryWidget({
             onEditLink(link)
           }}
         />
+      )}
+      </>
       )}
     </section>
   )

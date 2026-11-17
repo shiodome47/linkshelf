@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LinkShelf } from '../LinkShelf'
 import { memoryStorage } from '../storage/memory'
 import type { Category, Link } from '../types'
@@ -270,5 +270,83 @@ describe('閲覧専用（readOnly）', () => {
     render(<LinkShelf storage={memoryStorage()} readOnly />)
     expect(await screen.findByText('まだリンクはありません')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /カテゴリを追加/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('カテゴリの帯（jumpBar）', () => {
+  it('1 列で並ぶ狭い画面では、カテゴリ名の帯を出し、押すとそのカードへ飛ぶ', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    render(<LinkShelf storage={sample()} />)
+    await screen.findByText('Example')
+    const bar = screen.getByRole('navigation', { name: 'カテゴリへ移動' })
+    expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['仕事', '趣味'])
+    fireEvent.click(within(bar).getByRole('button', { name: '趣味' }))
+    await waitFor(() => expect(scroll).toHaveBeenCalled())
+    expect(scroll.mock.contexts[0]).toBe(screen.getByRole('region', { name: '趣味' }))
+  })
+
+  it('jumpBar="never" なら出さない', async () => {
+    render(<LinkShelf storage={sample()} jumpBar="never" />)
+    await screen.findByText('Example')
+    expect(screen.queryByRole('navigation', { name: 'カテゴリへ移動' })).not.toBeInTheDocument()
+  })
+
+  it('絞り込み中は、見えているカードだけを並べる', async () => {
+    render(<LinkShelf storage={sample()} />)
+    await screen.findByText('Example')
+    fireEvent.change(screen.getByRole('searchbox', { name: 'リンクを検索' }), { target: { value: '料理' } })
+    // 1 枚だけなら帯は出さない
+    expect(screen.queryByRole('navigation', { name: 'カテゴリへ移動' })).not.toBeInTheDocument()
+  })
+})
+
+describe('カードをたたむ（collapsible）', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('collapsible を付けないと、たたむボタンは出ない', async () => {
+    render(<LinkShelf storage={sample()} />)
+    await screen.findByText('Example')
+    expect(screen.queryByRole('button', { name: /をたたむ/ })).not.toBeInTheDocument()
+  })
+
+  it('たたむと中身が隠れ、もう一度押すとひらく。たたんだことはブラウザに覚えておく', async () => {
+    const { unmount } = render(<LinkShelf storage={sample()} collapsible />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: '「仕事」をたたむ' }))
+    expect(screen.queryByText('Example')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '「仕事」をひらく' })).toHaveAttribute('aria-expanded', 'false')
+    unmount()
+
+    // 開き直しても、たたんだまま
+    render(<LinkShelf storage={sample()} collapsible />)
+    await screen.findByText('料理のページ')
+    expect(screen.queryByText('Example')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '「仕事」をひらく' }))
+    expect(screen.getByText('Example')).toBeInTheDocument()
+  })
+
+  it('検索中は、たたんだカードもひらいて、見つかったものを見せる', async () => {
+    render(<LinkShelf storage={sample()} collapsible />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: '「仕事」をたたむ' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'リンクを検索' }), { target: { value: 'Example' } })
+    expect(screen.getByText('Example')).toBeInTheDocument()
+  })
+
+  it('帯から飛ぶと、たたんでいたカードをひらく', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    render(<LinkShelf storage={sample()} collapsible />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: '「仕事」をたたむ' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'カテゴリへ移動' })).getByRole('button', { name: '仕事' }))
+    expect(screen.getByText('Example')).toBeInTheDocument()
+  })
+
+  it('閲覧専用でも、たためる', async () => {
+    render(<LinkShelf storage={sample()} collapsible readOnly />)
+    await screen.findByText('Example')
+    fireEvent.click(screen.getByRole('button', { name: '「仕事」をたたむ' }))
+    expect(screen.queryByText('Example')).not.toBeInTheDocument()
   })
 })
