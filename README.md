@@ -67,6 +67,10 @@ export function App() {
 | `collapsible` | カードをたためるようにする | `false` |
 | `collapseKey` | たたんだカードを覚えておく名前（1 つのサイトに 2 つ置くときは別の名前に） | `'linkshelf'` |
 | `uploadImage` | 画像を受け取って置き、URL を返す関数（下の「画像を追加する」） | なし（ボタンを出さない） |
+| `imageMaxSide` | 置く前に、画像の長い辺をこのピクセル数まで縮める | なし（縮めない） |
+| `pasteImagesAnywhere` | ページのどこで画像を貼り付けても受け取り、置くカードを選んでもらう | `false` |
+| `viewImages` | 画像のリンクを部品の中で開き、メモを添えて見せる（その場でメモを書ける） | `false` |
+| `loadImage` | 画像を読む方法を差し替える（合言葉の要る保存先など。`viewImages` のとき） | なし（URL をそのまま使う） |
 | `linkIcon` | リンクのアイコンを差し替える `(link) => ReactNode \| null` | なし |
 | `openLink` | リンクを開く方法を差し替える `(url, link) => void` | なし（新しいタブで開く） |
 | `sameOriginInSameTab` | 同じサイトの URL は同じタブで開く | `false` |
@@ -168,6 +172,27 @@ const syncedStorage: LinkShelfStorage = {
 
 - 受け付けるのは JPEG・PNG・WebP です。
 - 失敗した（エラーを投げた）ときは、カードに短いエラー文を出し、リンクは足しません。エラーの文が短ければ、そのまま添えて出します。
+- `imageMaxSide={2000}` のように渡すと、置く前に長い辺を 2000px まで縮めます（スマホの写真やスクショを軽くする。小さい画像はそのまま。WebP にできない環境では JPEG）。
+- `pasteImagesAnywhere` を付けると、カードの外（ページのどこか）で貼り付けた画像も受け取り、置くカードを選ぶ画面を出します。前に選んだカードを覚えています。入力欄での貼り付けは、今までどおりです。
+
+保存先は `uploadImage` を差し替えるだけで変えられます（自分のサーバー、Cloudflare R2、S3 など）。linkshelf は、返ってきた URL をリンクとして置くだけです。
+
+### 画像を部品の中で見る（メモつき）
+
+`viewImages` を付けると、画像のリンク（下の「画像リンクのアイコン」と同じ見分け方）を押したとき、新しいタブではなく部品の中で画像を開きます。画像の下には、そのリンクのメモ（`description`）を添えて見せ、「メモを書く」「メモを直す」でその場で書けます（閲覧専用のときは見せるだけ）。Ctrl・⌘ を押しながら押すと、今までどおり新しいタブで開きます。
+
+合言葉（トークン）の要る保存先の画像は、`loadImage` で読み方を渡します。`Blob` を返すと、部品が表示用の URL を作り、閉じたときに片づけます。
+
+```tsx
+<LinkShelf
+  viewImages
+  loadImage={async (url) => {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) throw new Error('画像を読めませんでした')
+    return res.blob()
+  }}
+/>
+```
 
 ### 画像リンクのアイコン
 
@@ -287,6 +312,10 @@ Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`,
 | `collapsible` | Let viewers collapse cards | `false` |
 | `collapseKey` | Name used to remember collapsed cards (use different names for two shelves on one site) | `'linkshelf'` |
 | `uploadImage` | `(file, { categoryId }) => Promise<{ url, title? }>` that stores an image (see below) | none (no button) |
+| `imageMaxSide` | Shrink images so the longer side is at most this many pixels before upload | none |
+| `pasteImagesAnywhere` | Accept images pasted anywhere on the page and ask which card to put them on | `false` |
+| `viewImages` | Open image links inside the component, with the link's note shown (and editable) below | `false` |
+| `loadImage` | `(url, link) => Promise<Blob \| string>` to load images (e.g. with an auth header) | none |
 | `linkIcon` | `(link) => ReactNode \| null` to override link icons | none |
 | `openLink` | `(url, link) => void` to control how links open | none (new tab) |
 | `sameOriginInSameTab` | Open same-origin URLs in the same tab | `false` |
@@ -335,6 +364,10 @@ Pass `uploadImage` to show an “Add image” button on each card (hidden in `re
 ```tsx
 <LinkShelf uploadImage={async (file) => ({ url: await myUpload(file) })} />
 ```
+
+Where images are stored is up to you: swap the `uploadImage` function. `imageMaxSide={2000}` shrinks large photos and screenshots first. With `pasteImagesAnywhere`, an image pasted outside any card opens a small dialog to choose the card (the last choice is remembered); pastes into text fields are left alone.
+
+With `viewImages`, clicking an image link opens the image in a dialog with the link's note (`description`) below it; users can write or edit the note there (view only in `readOnly`). Ctrl/⌘-click still opens a new tab. For private images, pass `loadImage`; return a `Blob` and the component creates and revokes the object URL for you.
 
 Links whose path ends in `.jpg`, `.jpeg`, `.png`, `.webp` or `.gif` get an image icon. Use `linkIcon` to override icons (return `null` for the default).
 
