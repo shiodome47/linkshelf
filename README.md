@@ -38,7 +38,7 @@ export function App() {
 - お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
 - チェック項目（やること・毎日の習慣。`checklist` を付けたとき）。入力欄で「チェック項目にする」を選ぶか、「[] 〜」「[毎日] 〜」と打つ。毎日の項目は日付が変わるとチェックが外れ、カードの見出しに「済んだ数/全体」が出る
 - スマホでは、カテゴリの帯で各カードへ飛べる。カードをたためるようにもできる
-- 画像の追加（置き場所は組み込む側が用意）、画像リンクの印、リンクの開き方の指定（どれも選んで使う）
+- 画像の追加（置き場所は組み込む側が用意。ボタン・ドラッグ＆ドロップ・ページのどこでも貼り付け、大きな画像は縮めて置く）、画像をメモを添えて見る・その場でメモを書く、リンクの開き方の指定（どれも選んで使う）
 - ライト / ダーク表示、日本語 / 英語の表示
 
 ### こんな使い方も
@@ -263,7 +263,7 @@ URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは�
 
 ### 見本のページ
 
-[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) に、この部品を使った単独のアプリがあります（[デモ](https://linkshelf-chi.vercel.app)）。データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
+[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) に、この部品を使った単独のアプリがあります（[デモ](https://linkshelf-chi.vercel.app)）。データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。画像も、このブラウザの中（IndexedDB）に置きます（[`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts)。`uploadImage` と `loadImage` の書き方の見本）。チェック項目・カードをたたむ・画像（貼り付け・メモを添えて見る）も試せます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
 
 ---
 
@@ -279,7 +279,7 @@ URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは�
 - Favorites (star), with a button next to search to show favorites only
 - Checklist items (to-dos and daily habits, with `checklist`). Turn on "Make it a checklist item" in the add box, or type `[] …` / `[daily] …`. Daily items are unchecked again when the date changes, and the card header shows "done/total"
 - On phones, a category bar to jump between cards; cards can also be made collapsible
-- Optional image uploads (you provide the storage), image link icons, and control over how links open
+- Optional images (you provide the storage): add by button, drop or paste anywhere, shrink large ones, and view them in place with an editable note; control over how links open
 - Light / dark theme, Japanese / English labels
 
 ### Ideas
@@ -389,6 +389,10 @@ Override the CSS variables on `.linkshelf`: `--ls-bg`, `--ls-card`, `--ls-border
 - Unsafe URLs such as `javascript:` are never turned into links, and URLs are checked again before opening.
 - Texts are rendered as plain text, never as HTML.
 - Site icons are loaded from each site's own `/favicon.ico`; no third-party icon service is used.
+
+### Example app
+
+[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) is a standalone app built with this component ([demo](https://linkshelf-chi.vercel.app)). Everything, images included, is stored only in your browser ([`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts) shows how to write `uploadImage` and `loadImage`). You can try checklists, collapsible cards, and images (paste anywhere, view with a note). Labels follow your browser language (Japanese or English).
 
 ## License
 

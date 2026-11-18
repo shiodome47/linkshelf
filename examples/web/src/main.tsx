@@ -5,6 +5,7 @@ import { LinkShelf, type LinkShelfLocale, type LinkShelfTheme } from 'linkshelf'
 import 'linkshelf/style.css'
 import './page.css'
 import { fetchTitle } from './fetchTitle'
+import { loadLocalImage, saveLocalImage } from './localImages'
 
 /** ブラウザの言葉が日本語なら日本語、それ以外は英語で表示する */
 const LOCALE: LinkShelfLocale = navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en'
@@ -62,6 +63,12 @@ function App() {
       locale={LOCALE}
       collapsible
       checklist
+      // 画像: このブラウザの中に置き、部品の中でメモを添えて見る
+      uploadImage={saveLocalImage}
+      imageMaxSide={2000}
+      pasteImagesAnywhere
+      viewImages
+      loadImage={loadLocalImage}
       title="linkshelf"
       actions={<ThemeButton theme={theme} onChange={setTheme} />}
     />
