@@ -69,3 +69,19 @@ describe('mapWithLimit', () => {
     expect(done).toEqual([1])
   })
 })
+
+describe('normalizeLinkInput: 日本語の文は URL にしない', () => {
+  it('句点「。」や全角の文字を含む 1 行は、テキストのまま', () => {
+    for (const t of ['今日は晴れ。明日も晴れ', 'メモ。あとで見る', '豚しゃぶ。', 'ＡＢＣ．ｃｏｍ', '麻婆豆腐', 'v1.2.3', '3.14']) {
+      expect(normalizeLinkInput(t), t).toBeNull()
+    }
+  })
+
+  it('半角のドメインや、https:// から書いた URL は、今までどおり URL', () => {
+    expect(normalizeLinkInput('example.com')).toBe('https://example.com')
+    expect(normalizeLinkInput('docs.google.com/x?y=1')).toBe('https://docs.google.com/x?y=1')
+    expect(normalizeLinkInput('www.nhk.or.jp')).toBe('https://www.nhk.or.jp')
+    expect(normalizeLinkInput('localhost/page')).toBe('https://localhost/page')
+    expect(normalizeLinkInput('https://日本語.jp/')).toBe('https://日本語.jp/')
+  })
+})

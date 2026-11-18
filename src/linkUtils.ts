@@ -9,6 +9,12 @@ export function normalizeLinkInput(input: string): string | null {
   const text = input.trim()
   if (!text || /\s/.test(text)) return null
   const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(text)
+  // スキームが無いときは、ホスト名が半角の英数字のドメイン（example.com など）のときだけ URL とみなす。
+  // 「今日は晴れ。明日も」のような文は、URL の決まりで「。」が「.」として読まれ、日本語のドメインに
+  // 見えてしまうため（日本語のドメインは https:// から書けば URL になる）
+  if (!hasScheme && !/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z][a-z0-9-]*(:\d+)?([/?#]|$)/i.test(text) && !/^localhost(:\d+)?([/?#]|$)/i.test(text)) {
+    return null
+  }
   const candidate = hasScheme ? text : `https://${text}`
   if (!isSafeUrl(candidate)) return null
   // ドメインに「.」が無いもの（例: "hello"）は打ち間違いとみなす（localhost は許可）
