@@ -39,7 +39,8 @@ import { groupLinksByCategory, type FetchTitle } from './store'
 import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
 import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
-import { OptionsProvider, type UploadImage } from './options'
+import { OptionsProvider, type LoadImage, type UploadImage } from './options'
+import { PasteAnywhere } from './components/PasteAnywhere'
 import { ThemeProvider, type LinkShelfTheme } from './theme'
 import { cn } from './utils/cn'
 
@@ -82,6 +83,26 @@ export interface LinkShelfProps {
    * 大きさの上限などの確認は、この関数の中で行う
    */
   uploadImage?: UploadImage
+  /**
+   * 置く前に、画像の長い辺をこのピクセル数まで縮める（uploadImage を渡したとき）。
+   * 小さい画像はそのまま。渡さなければ縮めない
+   */
+  imageMaxSide?: number
+  /**
+   * true のとき、ページのどこで画像を貼り付けても受け取り、置くカードを選んでもらう
+   * （uploadImage を渡したとき。入力欄での貼り付けはそのまま）。既定は false
+   */
+  pasteImagesAnywhere?: boolean
+  /**
+   * true のとき、画像のリンク（jpg・png・webp・gif）を、新しいタブではなく部品の中で開く。
+   * 画像の下にリンクのメモを添えて見せ、その場でメモを書ける。既定は false
+   */
+  viewImages?: boolean
+  /**
+   * 画像を読む方法を差し替える（viewImages のとき）。合言葉の要る保存先などで使う。
+   * Blob を返すと部品が表示用の URL を作って片づけ、文字列を返すとその URL をそのまま使う
+   */
+  loadImage?: LoadImage
   /** リンクのアイコンを差し替える。null を返すと既定の表示 */
   linkIcon?: (link: Link) => ReactNode | null
   /** リンクを開く方法を差し替える（危ない URL のときは呼ばれない） */
@@ -118,6 +139,10 @@ export function LinkShelf({
   collapsible = false,
   collapseKey = 'linkshelf',
   uploadImage,
+  imageMaxSide,
+  pasteImagesAnywhere = false,
+  viewImages = false,
+  loadImage,
   linkIcon,
   openLink,
   sameOriginInSameTab = false,
@@ -131,7 +156,9 @@ export function LinkShelf({
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
       <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
         <ThemeProvider value={theme}>
-          <OptionsProvider value={{ uploadImage, linkIcon, openLink, sameOriginInSameTab, checklist }}>
+          <OptionsProvider
+            value={{ uploadImage, imageMaxSide, viewImages, loadImage, linkIcon, openLink, sameOriginInSameTab, checklist }}
+          >
           <Shelf
             title={title}
             theme={theme}
@@ -139,6 +166,7 @@ export function LinkShelf({
             jumpBar={jumpBar}
             collapsible={collapsible}
             collapseKey={collapseKey}
+            pasteImagesAnywhere={pasteImagesAnywhere}
             actions={actions}
             className={className}
           />
@@ -156,6 +184,7 @@ function Shelf({
   jumpBar,
   collapsible,
   collapseKey,
+  pasteImagesAnywhere,
   actions,
   className,
 }: {
@@ -165,6 +194,7 @@ function Shelf({
   jumpBar: 'auto' | 'always' | 'never'
   collapsible: boolean
   collapseKey: string
+  pasteImagesAnywhere: boolean
   actions?: ReactNode
   className?: string
 }) {
@@ -598,6 +628,8 @@ function Shelf({
         title={m.deleteCategoryTitle}
         description={m.deleteCategoryConfirm(deletingCategory?.name ?? '')}
       />
+
+      {pasteImagesAnywhere && !readOnly && <PasteAnywhere categories={sortedCategories} rememberKey={collapseKey} />}
     </div>
     </div>
   )

@@ -15,7 +15,16 @@ export interface LinkShelfOptions {
   sameOriginInSameTab?: boolean
   /** チェック項目を足せるようにする（入力欄に「チェック項目にする」が出る） */
   checklist?: boolean
+  /** 置く前に、画像の長い辺をこの大きさ（px）に縮める（WebP、使えなければ JPEG） */
+  imageMaxSide?: number
+  /** 画像のリンクを、新しいタブではなく部品の中の画像ビューア（メモつき）で開く */
+  viewImages?: boolean
+  /** 画像ビューアで画像を読む方法（合言葉の要る画像など）。Blob か、表示に使う URL を返す */
+  loadImage?: LoadImage
 }
+
+/** 画像ビューアで画像を読む。Blob（部品が表示用の URL にする）か、そのまま <img src> に使える URL を返す */
+export type LoadImage = (url: string, link: Link) => Promise<Blob | string>
 
 const OptionsContext = createContext<LinkShelfOptions>({})
 

@@ -3,7 +3,7 @@ import { ChevronDown, FilePlus, FileText, GripVertical, ImagePlus, Info, ListChe
 import { type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import type { Category, Link } from '../types'
 import { cn } from '../utils/cn'
-import { isSafeUrl, isSameOrigin, safeExternalUrl } from '../utils/url'
+import { isSameOrigin, safeExternalUrl } from '../utils/url'
 import { useOptions } from '../options'
 import { categoryColorClass } from '../categoryColors'
 import {
@@ -17,11 +17,13 @@ import {
   type LinkDragData,
   type LinkDropIndicator,
 } from '../dnd/types'
-import { isChecked, isOneLineText, localDateKey, normalizeLinkInput, oneLineTitle, parseCheckInput } from '../linkUtils'
+import { isChecked, isImageUrl, isOneLineText, localDateKey, normalizeLinkInput, oneLineTitle, parseCheckInput } from '../linkUtils'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { useLinkShelf } from '../context'
 import { LinkIcon, SiteIcon } from './SiteIcon'
 import { TextViewer } from './TextViewer'
+import { ImageViewer } from './ImageViewer'
+import { IMAGE_TYPES, imageFileOf, useImagePlacer } from '../image'
 import { useMessages } from '../i18n'
 import { readTextFile, TEXT_ACCEPT } from '../textFile'
 
@@ -89,23 +91,15 @@ export function CategoryWidget({
   const [uploadError, setUploadError] = useState('')
   const [dragOver, setDragOver] = useState(false)
 
+  const placeImage = useImagePlacer()
   const upload = async (file: File | undefined) => {
-    if (!file || !uploadImage) return
-    if (!IMAGE_TYPES.includes(file.type)) {
-      setUploadError(m.imageOnly)
-      return
-    }
+    if (!file || !placeImage) return
     setUploading(true)
     setUploadError('')
     try {
-      const result = await uploadImage(file, { categoryId: category.id })
-      // 相対の URL（/images/a.jpg など）は、今のページを基準にして絶対の URL にする
-      const url = typeof location !== 'undefined' ? new URL(result.url, location.href).toString() : result.url
-      if (!isSafeUrl(url)) throw new Error()
-      await addLink({ categoryId: category.id, title: result.title?.trim() || m.imageTitle(todayString()), url })
+      await placeImage(file, category.id)
     } catch (e) {
-      const detail = e instanceof Error && e.message && e.message.length <= 80 ? e.message : ''
-      setUploadError(m.uploadFailed(detail))
+      setUploadError(e instanceof Error ? e.message : m.uploadFailed(''))
     } finally {
       setUploading(false)
     }
@@ -389,7 +383,8 @@ function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator,
   const checked = isCheck && isChecked(link)
   const daily = isCheck && link.repeat === 'daily'
   const href = isText || isCheck ? undefined : safeExternalUrl(link.url)
-  const { openLink, sameOriginInSameTab } = useOptions()
+  const { openLink, sameOriginInSameTab, viewImages } = useOptions()
+  const [viewingImage, setViewingImage] = useState(false)
   /** 同じタブで開くか（sameOriginInSameTab のとき、同じサイトの URL だけ） */
   const sameTab = !!href && !!sameOriginInSameTab && isSameOrigin(href)
   const [viewing, setViewing] = useState(false)
@@ -539,6 +534,12 @@ function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator,
                 return
               }
               void recordAccess(link.id)
+              // 画像は部品の中で見る（メモを添えて）。Ctrl・⌘ を押しながらなら、いつもどおり新しいタブ
+              if (viewImages && isImageUrl(link.url) && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault()
+                setViewingImage(true)
+                return
+              }
               // 開き方を組み込む側が決めるとき（href は isSafeUrl を通したものだけ）
               if (openLink) {
                 e.preventDefault()
@@ -592,6 +593,7 @@ function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator,
         </div>
       )}
       {viewing && <TextViewer link={link} onClose={() => setViewing(false)} onEdit={readOnly ? undefined : onEdit} />}
+      {viewingImage && <ImageViewer link={link} readOnly={readOnly} onClose={() => setViewingImage(false)} />}
     </li>
   )
 }
@@ -919,30 +921,6 @@ export function QuickAdd({
 }
 
 // ─── 画像 ───────────────────────────────────────────────────
-
-/** 受け付ける画像の種類 */
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-
-/** 貼り付けたものの中から、受け付ける画像を 1 つ取り出す（無ければ null） */
-function imageFileOf(data: DataTransfer | null): File | null {
-  if (!data) return null
-  for (const item of Array.from(data.items ?? [])) {
-    if (item.kind === 'file' && IMAGE_TYPES.includes(item.type)) {
-      const file = item.getAsFile()
-      if (file) return file
-    }
-  }
-  for (const file of Array.from(data.files ?? [])) {
-    if (IMAGE_TYPES.includes(file.type)) return file
-  }
-  return null
-}
-
-/** 今日の日付（YYYY/MM/DD） */
-function todayString(): string {
-  const d = new Date()
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-}
 
 /** 「画像を追加」のボタン（枠線つき） */
 function ImageButton({ label, onClick }: { label: string; onClick: () => void }) {
