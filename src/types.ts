@@ -18,6 +18,11 @@ export interface Category {
   order: number
   /** 画面で置く列（左から 0, 1, 2 …）。ドラッグで並べ替えると決まる */
   column?: number
+  /**
+   * 組み込むアプリが自由に使う欄（期日・担当・自分のアプリの id など）。
+   * linkshelf はこの中を見ず、変えず、作成・更新・移動・並べ替えでも消さずに残す。保存先にもそのまま入る
+   */
+  meta?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }
@@ -55,6 +60,11 @@ export interface Link {
   order: number
   /** 最後に開いた日時 */
   lastAccessedAt?: string
+  /**
+   * 組み込むアプリが自由に使う欄（期日・担当・自分のアプリの id など）。
+   * linkshelf はこの中を見ず、変えず、作成・更新・移動・並べ替えでも消さずに残す。保存先にもそのまま入る
+   */
+  meta?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }
