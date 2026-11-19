@@ -2,6 +2,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import type { Category, Link } from './types'
 import { putMany, type LinkShelfStorage } from './storage/types'
 import { isChecked, titleFromUrl } from './linkUtils'
+import { mergeShelfData, toShelfData, type ShelfData } from './backup'
 
 // ============================================================
 // 入力の形
@@ -12,12 +13,16 @@ export interface CreateCategoryInput {
   description?: string
   /** 色の名前（例: 'teal'）か、#から始まる色 */
   color?: string
+  /** アプリが自由に使う欄（linkshelf は中を見ない）。更新では、渡すと丸ごと置き換える */
+  meta?: Record<string, unknown>
 }
 
 export interface UpdateCategoryInput {
   name?: string
   description?: string
   color?: string
+  /** アプリが自由に使う欄（linkshelf は中を見ない）。更新では、渡すと丸ごと置き換える */
+  meta?: Record<string, unknown>
 }
 
 export interface CreateLinkInput {
@@ -30,6 +35,8 @@ export interface CreateLinkInput {
   repeat?: 'daily'
   description?: string
   tags?: string[]
+  /** アプリが自由に使う欄（linkshelf は中を見ない）。更新では、渡すと丸ごと置き換える */
+  meta?: Record<string, unknown>
 }
 
 export interface UpdateLinkInput {
@@ -43,6 +50,8 @@ export interface UpdateLinkInput {
   isPinned?: boolean
   /** チェック項目のくり返し。null で「1 回だけ」に戻す */
   repeat?: 'daily' | null
+  /** アプリが自由に使う欄（linkshelf は中を見ない）。更新では、渡すと丸ごと置き換える */
+  meta?: Record<string, unknown>
 }
 
 /** カテゴリ内リンクの並べ替え方 */
@@ -121,6 +130,15 @@ export interface LinkShelfState {
   deleteLinks: (ids: string[]) => Promise<void>
   /** カテゴリ内のリンクを並べ替えて、その順番を保存する */
   sortLinks: (categoryId: string, mode: LinkSortMode) => Promise<void>
+
+  // --- バックアップ ---
+  /** 今の中身を、書き出す形（JSON にできる）にする */
+  exportData: () => ShelfData
+  /**
+   * 書き出した中身を読み込む（parseShelfData で確かめたもの）。保存先にも書き、画面も変わる。
+   * replace: 今の中身を消して置き換える／merge: 今の中身に足す（同じ id は読み込んだ方で上書き）
+   */
+  importData: (data: ShelfData, mode: 'replace' | 'merge') => Promise<void>
 }
 
 export type LinkShelfStore = StoreApi<LinkShelfState>
@@ -186,6 +204,7 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
           name: data.name,
           description: data.description ?? '',
           ...(data.color !== undefined ? { color: data.color } : {}),
+          ...(data.meta !== undefined ? { meta: data.meta } : {}),
           order: get().categories.length,
           createdAt: t,
           updatedAt: t,
@@ -232,6 +251,7 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
           isFavorited: false,
           isPinned: false,
           order,
+          ...(data.meta !== undefined ? { meta: data.meta } : {}),
           createdAt: t,
           updatedAt: t,
         }
@@ -397,6 +417,24 @@ export function createLinkShelfStore(storage: LinkShelfStorage, options: LinkShe
         const idSet = new Set(ids)
         await storage.deleteLinks(ids)
         set((s) => ({ links: s.links.filter((l) => !idSet.has(l.id)) }))
+      },
+
+      exportData: () => toShelfData(get().categories, get().links),
+
+      importData: async (data, mode) => {
+        if (mode === 'replace') {
+          const { categories, links } = get()
+          // 先にリンクを消す（途中で止まっても、カテゴリの無いリンクが残らないように）
+          if (links.length) await storage.deleteLinks(links.map((l) => l.id))
+          for (const c of categories) await storage.deleteCategory(c.id)
+          await putMany(storage, { categories: data.categories, links: data.links })
+          set({ categories: data.categories, links: data.links, loaded: true })
+          return
+        }
+        const merged = mergeShelfData(get(), data)
+        const incomingIds = new Set(data.categories.map((c) => c.id))
+        await putMany(storage, { categories: merged.categories.filter((c) => incomingIds.has(c.id)), links: data.links })
+        set({ categories: merged.categories, links: merged.links, loaded: true })
       },
 
       sortLinks: async (categoryId, mode) => {

@@ -63,6 +63,8 @@ function App() {
       locale={LOCALE}
       collapsible
       checklist
+      // 中身を JSON のファイルに書き出す・読み込む
+      backup
       // 画像: このブラウザの中に置き、部品の中でメモを添えて見る
       uploadImage={saveLocalImage}
       imageMaxSide={2000}

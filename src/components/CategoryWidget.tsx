@@ -73,7 +73,8 @@ export function CategoryWidget({
 }: CategoryWidgetProps) {
   const { addLinkFromUrl, addLink, updateLink, clearDoneChecks } = useLinkShelf()
   const m = useMessages()
-  const { uploadImage, checklist } = useOptions()
+  const { uploadImage, checklist, renderCardExtra } = useOptions()
+  const cardExtra = renderCardExtra?.(category, links)
   /** 今日の日付（日付が変わったら描き直して、毎日の項目のチェックを外す） */
   const today = useToday()
   const checks = links.filter((l) => l.kind === 'check')
@@ -200,6 +201,12 @@ export function CategoryWidget({
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
           {category.name}
         </h2>
+        {/* アプリが差し込む表示（<LinkShelf renderCardExtra>） */}
+        {cardExtra != null && cardExtra !== false && (
+          <div className="flex flex-shrink-0 items-center gap-1" data-testid="card-extra">
+            {cardExtra}
+          </div>
+        )}
         {checks.length > 0 ? (
           <span
             title={m.checkProgress(checkedCount, checks.length)}
@@ -383,7 +390,8 @@ function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator,
   const checked = isCheck && isChecked(link)
   const daily = isCheck && link.repeat === 'daily'
   const href = isText || isCheck ? undefined : safeExternalUrl(link.url)
-  const { openLink, sameOriginInSameTab, viewImages } = useOptions()
+  const { openLink, sameOriginInSameTab, viewImages, renderLinkExtra } = useOptions()
+  const linkExtra = renderLinkExtra?.(link)
   const [viewingImage, setViewingImage] = useState(false)
   /** 同じタブで開くか（sameOriginInSameTab のとき、同じサイトの URL だけ） */
   const sameTab = !!href && !!sameOriginInSameTab && isSameOrigin(href)
@@ -554,6 +562,12 @@ function LinkRow({ link, readOnly, viewOnly, today: _today, renaming, indicator,
           </a>
           )}
           <div className="flex flex-shrink-0 items-center pr-1">
+            {/* アプリが差し込む表示（<LinkShelf renderLinkExtra>） */}
+            {linkExtra != null && linkExtra !== false && (
+              <span className="mr-1 flex items-center gap-1 text-[11px] text-neutral-400" data-testid="link-extra">
+                {linkExtra}
+              </span>
+            )}
             {viewOnly ? (
               // 閲覧専用: 星は印として見せるだけ（押せない）
               link.isFavorited && (

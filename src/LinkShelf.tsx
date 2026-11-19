@@ -35,9 +35,11 @@ import { groupLinksByCategory, type FetchTitle } from './store'
 import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
 import { dropPosition, useColumnCount, useDragSensors } from './board'
-import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
+import { filterShelf } from './filter'
+import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale, type LinkShelfMessages } from './i18n'
 import { OptionsProvider, type LoadImage, type UploadImage } from './options'
 import { PasteAnywhere } from './components/PasteAnywhere'
+import { BackupButton } from './components/BackupButton'
 import { ThemeProvider, type LinkShelfTheme } from './theme'
 import { cn } from './utils/cn'
 
@@ -54,6 +56,11 @@ export interface LinkShelfProps {
   title?: string
   /** 画面の言葉。ja（日本語。既定）か en（英語） */
   locale?: LinkShelfLocale
+  /**
+   * 画面の言葉を一部だけ差し替える（例: { addCategory: 'ノートを追加' }）。
+   * 渡さなかった言葉は locale のまま。言葉の一覧は MESSAGES.ja / MESSAGES.en
+   */
+  messages?: Partial<LinkShelfMessages>
   /** 明るさ。light / dark / system（端末の設定に合わせる。既定） */
   theme?: LinkShelfTheme
   /**
@@ -111,6 +118,18 @@ export interface LinkShelfProps {
    * false でも、保存先にすでにあるチェック項目は表示し、チェックを付け外しできる
    */
   checklist?: boolean
+  /**
+   * リンク行の右（星の左）に、アプリが自分の表示を差し込む（期日・担当・印など）。
+   * link.meta（アプリが自由に使う欄）と組み合わせると、linkshelf を作り直さずに項目を足せる
+   */
+  renderLinkExtra?: (link: Link) => ReactNode
+  /** カードの見出しの右に、アプリが自分の表示を差し込む（集計・小さなボタンなど） */
+  renderCardExtra?: (category: Category, links: Link[]) => ReactNode
+  /**
+   * 「書き出す」「読み込む」のボタンを出す（中身を JSON のファイルに保存・ファイルから戻す）。既定は false。
+   * 閲覧専用では「書き出す」だけ
+   */
+  backup?: boolean
   /** 見出しの右に足すもの（テーマの切り替えボタンなど） */
   actions?: ReactNode
   /** いちばん外側の要素に足す class */
@@ -130,6 +149,7 @@ export function LinkShelf({
   fetchTitle,
   title,
   locale = 'ja',
+  messages,
   theme = 'system',
   readOnly = false,
   jumpBar = 'auto',
@@ -144,17 +164,32 @@ export function LinkShelf({
   openLink,
   sameOriginInSameTab = false,
   checklist = false,
+  renderLinkExtra,
+  renderCardExtra,
+  backup = false,
   actions,
   className,
 }: LinkShelfProps) {
   // 保存先は最初の 1 回だけ決める（描くたびに IndexedDB を開き直さないように）
   const [store] = useState(() => storage ?? indexedDbStorage())
+  const words = useMemo(() => ({ ...(MESSAGES[locale] ?? MESSAGES.ja), ...messages }), [locale, messages])
   return (
     <LinkShelfProvider storage={store} fetchTitle={fetchTitle}>
-      <LocaleProvider value={MESSAGES[locale] ?? MESSAGES.ja}>
+      <LocaleProvider value={words}>
         <ThemeProvider value={theme}>
           <OptionsProvider
-            value={{ uploadImage, imageMaxSide, viewImages, loadImage, linkIcon, openLink, sameOriginInSameTab, checklist }}
+            value={{
+              uploadImage,
+              imageMaxSide,
+              viewImages,
+              loadImage,
+              linkIcon,
+              openLink,
+              sameOriginInSameTab,
+              checklist,
+              renderLinkExtra,
+              renderCardExtra,
+            }}
           >
           <Shelf
             title={title}
@@ -164,6 +199,7 @@ export function LinkShelf({
             collapsible={collapsible}
             collapseKey={collapseKey}
             pasteImagesAnywhere={pasteImagesAnywhere}
+            backup={backup}
             actions={actions}
             className={className}
           />
@@ -182,6 +218,7 @@ function Shelf({
   collapsible,
   collapseKey,
   pasteImagesAnywhere,
+  backup,
   actions,
   className,
 }: {
@@ -192,6 +229,7 @@ function Shelf({
   collapsible: boolean
   collapseKey: string
   pasteImagesAnywhere: boolean
+  backup: boolean
   actions?: ReactNode
   className?: string
 }) {
@@ -234,28 +272,8 @@ function Shelf({
   )
   const linksByCategory = useMemo(() => groupLinksByCategory(links), [links])
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return sortedCategories
-      .map((category) => {
-        const inCategory = linksByCategory.get(category.id) ?? []
-        const all = favoritesOnly ? inCategory.filter((l) => l.isFavorited) : inCategory
-        // お気に入りだけのときは、お気に入りが 1 つも無いカードを出さない
-        if (!q) return favoritesOnly ? { category, links: all, show: all.length > 0 } : { category, links: all }
-        const categoryHit = category.name.toLowerCase().includes(q)
-        const hits = all.filter(
-          (l) =>
-            l.title.toLowerCase().includes(q) ||
-            l.url.toLowerCase().includes(q) ||
-            (l.text ?? '').toLowerCase().includes(q) ||
-            l.description.toLowerCase().includes(q) ||
-            l.tags.some((t) => t.toLowerCase().includes(q)),
-        )
-        const show = favoritesOnly ? hits.length > 0 || (categoryHit && all.length > 0) : categoryHit || hits.length > 0
-        return { category, links: categoryHit && hits.length === 0 ? all : hits, show }
-      })
-      .filter((v) => !('show' in v) || v.show)
-  }, [sortedCategories, linksByCategory, query, favoritesOnly])
+  // 検索・お気に入りだけの絞り込み（filter.ts。外からも同じ決まりで使える）
+  const visible = useMemo(() => filterShelf(categories, links, { query, favoritesOnly }), [categories, links, query, favoritesOnly])
 
   // ─── 段組み（列数は画面幅から決め、カードを低い列から順に詰める） ───
   const [containerRef, columnCount] = useColumnCount({ minWidth: MIN_COLUMN_WIDTH, gap: COLUMN_GAP })
@@ -436,6 +454,7 @@ function Shelf({
           </div>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {backup && <BackupButton readOnly={readOnly} />}
           {actions}
           {!readOnly && canFetchTitle && links.length > 0 && (
             <Button

@@ -24,6 +24,8 @@ export function App() {
 }
 ```
 
+`react` と `react-dom`（18 か 19）が必要です。/ Requires `react` and `react-dom` 18 or 19.
+
 [日本語](#日本語) ・ [English](#english)
 
 ---
@@ -32,55 +34,91 @@ export function App() {
 
 ### できること
 
-- カードを作る・名前と色を変える・ドラッグで並べ替える（スマホでは 1 列）
+- カードを作る・名前と色を変える・ドラッグで好きな列・位置へ並べ替える（スマホでは 1 列）
 - URL を入れて Enter でリンク、それ以外の 1 行は 1 行メモ（ダブルクリックで書き換え）
-- 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン
-- お気に入り（星）。検索の横の星のボタンで、お気に入りだけを表示
-- チェック項目（やること・毎日の習慣。`checklist` を付けたとき）。入力欄で「チェック項目にする」を選ぶか、「[] 〜」「[毎日] 〜」と打つ。毎日の項目は日付が変わるとチェックが外れ、カードの見出しに「済んだ数/全体」が出る
-- スマホでは、カテゴリの帯で各カードへ飛べる。カードをたためるようにもできる
-- 画像の追加（置き場所は組み込む側が用意。ボタン・ドラッグ＆ドロップ・ページのどこでも貼り付け、大きな画像は縮めて置く）、画像をメモを添えて見る・その場でメモを書く、リンクの開き方の指定（どれも選んで使う）
-- ライト / ダーク表示、日本語 / 英語の表示
+- 長めのテキスト（書く・.txt を置く）、検索、サイトのアイコン、お気に入り（星）
+- チェック項目（やること・毎日の習慣）
+- 画像（置き場所は組み込む側が用意）：追加・貼り付け・縮めて置く・メモを添えて見る
+- スマホ向けのカテゴリの帯、カードをたたむ
+- 書き出し・読み込み（JSON のファイル）
+- ライト / ダーク表示、日本語 / 英語
+
+**使い方は 3 段階**あります。必要になったところまで進めば十分です。
+
+| 段階 | こんなとき | 使うもの |
+|---|---|---|
+| [1. そのまま使う](#1-そのまま使う) | リンク集・メモ帳としてそのまま置きたい | `<LinkShelf>` と設定（props） |
+| [2. 少し変える](#2-少し変える) | 言葉・色・項目を自分のアプリに合わせたい（作り直さずに） | `messages`・CSS の変数・`meta`・差し込み口 |
+| [3. 組み立てる](#3-組み立てる) | 自分のアプリ用に画面を一から作りたい（中身の仕組みは使い回したい） | ストア・見た目の部品・段組みとドラッグの道具 |
 
 ### こんな使い方も
 
-リンク・1 行メモ・テキストを、カードに分けて自由に並べられるので、いろいろな用途に使えます。
-
 - **ブックマーク集**：よく使うサイトを、仕事・趣味などのカードに分けて並べる
 - **備忘録・覚書**：思いついたことを 1 行メモで書きとめる。長いものはテキストに
-- **かんたんなカンバン**：「やること」「作業中」「終わった」のカードを作り、項目をドラッグで移していく（期限や担当者を付ける機能はありません）
+- **かんたんなカンバン**：「やること」「作業中」「終わった」のカードを作り、項目をドラッグで移していく
 - **調べものの整理**：テーマごとのカードに、参考にしたページとメモをまとめる
 - **目標の管理**：目標ごとのカードに、やることと、役に立つリンクを並べる
 
-データはブラウザの中（IndexedDB）に保存されます。見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも使えます。`react` と `react-dom`（18 か 19）が必要です。
+データは、既定ではブラウザの中（IndexedDB）に保存されます。見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも、ほかの部分を崩しません。
 
-### 設定（props）
+---
+
+### 1. そのまま使う
+
+#### 設定（props）
+
+**基本**
 
 | 名前 | 意味 | 既定 |
 |---|---|---|
-| `storage` | 保存先（下の「保存先を変える」） | `indexedDbStorage()` |
-| `fetchTitle` | ページの名前を取る関数 `(url) => Promise<string \| null>` | なし（名前は URL から作る） |
-| `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
-| `locale` | 画面の言葉。`'ja'`（日本語）/ `'en'`（英語） | `'ja'` |
+| `storage` | 保存先（[保存先を変える](#保存先を変える)） | `indexedDbStorage()` |
+| `fetchTitle` | ページの名前を取る関数 `(url) => Promise<string \| null>`（[ページの名前を取る](#ページの名前を取る)） | なし（名前は URL から作る） |
 | `title` | 見出し | `'リンク集'`（英語では `'Links'`） |
-| `readOnly` | 閲覧専用（下の「閲覧専用にする」） | `false` |
-| `jumpBar` | カテゴリの帯（下の「スマホで見やすくする」）。`'auto'` / `'always'` / `'never'` | `'auto'` |
-| `collapsible` | カードをたためるようにする | `false` |
-| `collapseKey` | たたんだカードを覚えておく名前（1 つのサイトに 2 つ置くときは別の名前に） | `'linkshelf'` |
-| `uploadImage` | 画像を受け取って置き、URL を返す関数（下の「画像を追加する」） | なし（ボタンを出さない） |
-| `imageMaxSide` | 置く前に、画像の長い辺をこのピクセル数まで縮める | なし（縮めない） |
-| `pasteImagesAnywhere` | ページのどこで画像を貼り付けても受け取り、置くカードを選んでもらう | `false` |
-| `viewImages` | 画像のリンクを部品の中で開き、メモを添えて見せる（その場でメモを書ける） | `false` |
-| `loadImage` | 画像を読む方法を差し替える（合言葉の要る保存先など。`viewImages` のとき） | なし（URL をそのまま使う） |
-| `linkIcon` | リンクのアイコンを差し替える `(link) => ReactNode \| null` | なし |
-| `openLink` | リンクを開く方法を差し替える `(url, link) => void` | なし（新しいタブで開く） |
-| `sameOriginInSameTab` | 同じサイトの URL は同じタブで開く | `false` |
-| `checklist` | チェック項目（やること・毎日の習慣）を足せるようにする。`false` でも、すでにあるチェック項目は表示する | `false` |
+| `locale` | 画面の言葉。`'ja'` / `'en'` | `'ja'` |
+| `theme` | `'light'` / `'dark'` / `'system'`（端末の設定に合わせる） | `'system'` |
+| `readOnly` | 閲覧専用（[閲覧専用にする](#閲覧専用にする)） | `false` |
+| `checklist` | チェック項目を足せるようにする（`false` でも、すでにあるものは表示する） | `false` |
+| `backup` | 「書き出す」「読み込む」のボタンを出す（[書き出し・読み込み](#書き出し読み込み)） | `false` |
 | `actions` | 見出しの右に足すもの（テーマの切り替えボタンなど） | なし |
 | `className` | いちばん外側に足す class | なし |
 
+**スマホ・見せ方**
+
+| 名前 | 意味 | 既定 |
+|---|---|---|
+| `jumpBar` | カテゴリの帯。`'auto'`（1 列の画面だけ）/ `'always'` / `'never'` | `'auto'` |
+| `collapsible` | カードをたためるようにする | `false` |
+| `collapseKey` | たたんだカードを覚える名前（1 つのサイトに 2 つ置くときは別の名前に） | `'linkshelf'` |
+
+**画像**
+
+| 名前 | 意味 | 既定 |
+|---|---|---|
+| `uploadImage` | 画像を受け取って置き、URL を返す関数（[画像](#画像)） | なし（ボタンを出さない） |
+| `imageMaxSide` | 置く前に、画像の長い辺をこのピクセル数まで縮める | なし（縮めない） |
+| `pasteImagesAnywhere` | ページのどこで貼り付けても受け取り、置くカードを選んでもらう | `false` |
+| `viewImages` | 画像のリンクを部品の中で開き、メモを添えて見せる（その場で書ける） | `false` |
+| `loadImage` | 画像を読む方法（合言葉の要る保存先など） | なし（URL をそのまま使う） |
+
+**リンク**
+
+| 名前 | 意味 | 既定 |
+|---|---|---|
+| `linkIcon` | リンクのアイコンを差し替える `(link) => ReactNode \| null` | なし |
+| `openLink` | リンクを開く方法を差し替える `(url, link) => void` | なし（新しいタブ） |
+| `sameOriginInSameTab` | 同じサイトの URL は同じタブで開く | `false` |
+
+**変える**（[2. 少し変える](#2-少し変える)）
+
+| 名前 | 意味 | 既定 |
+|---|---|---|
+| `messages` | 画面の言葉を一部だけ差し替える | なし |
+| `renderLinkExtra` | リンク行の右に、アプリの表示を差し込む `(link) => ReactNode` | なし |
+| `renderCardExtra` | カードの見出しの右に、アプリの表示を差し込む `(category, links) => ReactNode` | なし |
+
 `storage` と `fetchTitle` は、最初に渡したものを使い続けます。
 
-### 保存先を変える
+#### 保存先を変える
 
 ```tsx
 import { LinkShelf, indexedDbStorage, memoryStorage } from 'linkshelf'
@@ -92,7 +130,7 @@ import { LinkShelf, indexedDbStorage, memoryStorage } from 'linkshelf'
 <LinkShelf storage={memoryStorage()} />
 ```
 
-自分の保存先（サーバーなど）を使うときは、`LinkShelfStorage` の形の物を渡します。
+自分の保存先（サーバー・同期の仕組みなど）を使うときは、`LinkShelfStorage` の形の物を渡します。
 
 ```ts
 import type { LinkShelfStorage } from 'linkshelf'
@@ -100,48 +138,31 @@ import type { LinkShelfStorage } from 'linkshelf'
 const myStorage: LinkShelfStorage = {
   loadAll: async () => ({ categories: [], links: [] }),
   putCategory: async (category) => {},
-  deleteCategory: async (id) => {},
+  deleteCategory: async (id) => {}, // 中のリンクは deleteLinks で別に消す
   putLink: async (link) => {},
   deleteLinks: async (ids) => {},
   // bulkPut は無くてもよい（無ければ 1 件ずつ put する）
-  // subscribe も無くてもよい（下の「ほかの端末の変更を出す」）
-}
-```
-
-#### ほかの端末の変更を出す（同期するとき）
-
-保存先に `subscribe` を付けると、中身が外から変わったとき（同期でほかの端末の変更が届いたときなど）に、画面を読み直します。
-
-```ts
-const syncedStorage: LinkShelfStorage = {
-  ...myStorage,
-  // 変わったら onChange を呼ぶ。戻り値は、知らせをやめる関数
+  // 中身が外から変わったら（同期など）知らせる。知らせを受けると読み直す。無くてもよい
   subscribe: (onChange) => mySync.onRemoteChange(onChange),
 }
 ```
 
-### 閲覧専用にする
+#### 閲覧専用にする
 
-`readOnly` を付けると、リンクを開く・検索・お気に入りだけ表示はできて、追加・編集・削除・並べ替え・星を付けることはできなくなります。サイトを見に来た人には閲覧専用、編集する人には編集できる画面、のように使い分けられます。
+`readOnly` を付けると、開く・検索・お気に入りだけ表示はできて、追加・編集・削除・並べ替え・星を付けることはできなくなります。
 
 ```tsx
 <LinkShelf storage={siteStorage} readOnly={!isEditor} />
 ```
 
-**注意**：`readOnly` は画面のボタンを隠すだけです。書き換えを本当に防ぐには、保存先（サーバー）の側でも「編集する人以外の書き込みを断る」ようにしてください。
+**注意**：`readOnly` は画面のボタンを隠すだけです。書き換えを本当に防ぐには、保存先（サーバー）の側でも書き込みを断ってください。
 
-### スマホで見やすくする
+#### スマホで見やすくする
 
-スマホなど狭い画面では、カードが縦に 1 列に並びます。一覧しやすくするために、2 つの機能があります。
+- **カテゴリの帯**（`jumpBar`）：カテゴリ名を横に並べた帯。押すとそのカードへ飛び、下へスクロールしても上に残ります。
+- **カードをたたむ**（`collapsible`）：見出しの右のボタンで中身をたためます。見る人のブラウザに覚えておきます。検索中は、見つかったものが隠れないようにすべてひらきます。
 
-- **カテゴリの帯**（`jumpBar`）：カテゴリ名を横に並べた帯を出し、押すとそのカードへ飛びます。下へスクロールしても、帯は上に残ります。既定（`'auto'`）では、1 列で並ぶ狭い画面のときだけ出ます。`'always'` でいつも、`'never'` で出さないようにできます。
-- **カードをたたむ**（`collapsible`）：カードの見出しの右にボタンが出て、中身をたためます。たたんだカードは、見る人のブラウザに覚えておきます（ほかの人には影響しません）。検索中・お気に入りだけ表示のときは、見つかったものが隠れないように、すべてひらきます。
-
-```tsx
-<LinkShelf collapsible jumpBar="auto" />
-```
-
-アプリの上に固定のヘッダーがあって、帯がその下に隠れるときは、帯を止める位置を CSS の変数で指定します。
+アプリの上に固定のヘッダーがあるときは、帯を止める位置を CSS の変数で指定します。
 
 ```css
 .linkshelf {
@@ -149,104 +170,193 @@ const syncedStorage: LinkShelfStorage = {
 }
 ```
 
-### 画像を追加する
+#### 画像
 
-`uploadImage` を渡すと、各カードに「画像を追加」のボタンが出ます（閲覧専用のときは出ません）。カードへのドラッグ＆ドロップや、カードを選んだ状態での貼り付け（Ctrl+V / ⌘V）でも受け付けます。文字や URL の貼り付けは、今までどおりです。
-
-画像を置く場所（サーバー）は、組み込む側が用意します。`uploadImage` は画像を受け取って置き、その URL を返します。返ってきた URL で、カードの末尾にリンクを足します（名前を返さなければ「画像（YYYY/MM/DD）」）。
+`uploadImage` を渡すと、各カードに「画像を追加」が出ます。カードへのドラッグ＆ドロップや貼り付け（Ctrl+V / ⌘V）でも受け付けます。置き場所（サーバー）は組み込む側が用意し、linkshelf は返ってきた URL をリンクとして置くだけです（自分のサーバー・Cloudflare R2・S3 など、関数を差し替えるだけで変えられます）。
 
 ```tsx
 <LinkShelf
   uploadImage={async (file, { categoryId }) => {
-    // 大きさの上限などの確認は、ここで行う
-    if (file.size > 5 * 1024 * 1024) throw new Error('5MB までです')
+    if (file.size > 5 * 1024 * 1024) throw new Error('5MB までです') // 上限の確認はここで
     const body = new FormData()
     body.append('file', file)
     const res = await fetch('/api/images', { method: 'POST', body })
     if (!res.ok) throw new Error('アップロードできませんでした')
-    const { url } = await res.json()
-    return { url } // 相対の URL（/images/a.jpg）でもよい
+    return { url: (await res.json()).url } // 相対の URL（/images/a.jpg）でもよい
   }}
+  imageMaxSide={2000}   // 大きな写真・スクショを縮めてから置く
+  pasteImagesAnywhere   // カードの外で貼り付けても、置くカードを選んで置ける
+  viewImages            // 画像を部品の中で開き、メモ（description）を添えて見る・書く
 />
 ```
 
-- 受け付けるのは JPEG・PNG・WebP です。
-- 失敗した（エラーを投げた）ときは、カードに短いエラー文を出し、リンクは足しません。エラーの文が短ければ、そのまま添えて出します。
-- `imageMaxSide={2000}` のように渡すと、置く前に長い辺を 2000px まで縮めます（スマホの写真やスクショを軽くする。小さい画像はそのまま。WebP にできない環境では JPEG）。
-- `pasteImagesAnywhere` を付けると、カードの外（ページのどこか）で貼り付けた画像も受け取り、置くカードを選ぶ画面を出します。前に選んだカードを覚えています。入力欄での貼り付けは、今までどおりです。
-
-保存先は `uploadImage` を差し替えるだけで変えられます（自分のサーバー、Cloudflare R2、S3 など）。linkshelf は、返ってきた URL をリンクとして置くだけです。
-
-### 画像を部品の中で見る（メモつき）
-
-`viewImages` を付けると、画像のリンク（下の「画像リンクのアイコン」と同じ見分け方）を押したとき、新しいタブではなく部品の中で画像を開きます。画像の下には、そのリンクのメモ（`description`）を添えて見せ、「メモを書く」「メモを直す」でその場で書けます（閲覧専用のときは見せるだけ）。Ctrl・⌘ を押しながら押すと、今までどおり新しいタブで開きます。
-
-合言葉（トークン）の要る保存先の画像は、`loadImage` で読み方を渡します。`Blob` を返すと、部品が表示用の URL を作り、閉じたときに片づけます。
+- 受け付けるのは JPEG・PNG・WebP。失敗したら（エラーを投げたら）、短いエラー文を出し、リンクは足しません。
+- 合言葉の要る画像は `loadImage` で読み方を渡します。`Blob` を返すと、部品が表示用の URL を作り、閉じたときに片づけます。
 
 ```tsx
-<LinkShelf
-  viewImages
-  loadImage={async (url) => {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) throw new Error('画像を読めませんでした')
-    return res.blob()
-  }}
-/>
+<LinkShelf viewImages loadImage={async (url) => (await fetch(url, { headers: { Authorization: `Bearer ${token}` } })).blob()} />
 ```
 
-### 画像リンクのアイコン
+URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは、画像の印を出します（`linkIcon` で差し替えられます）。
 
-URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは、サイトのアイコンの代わりに画像の印を出します。アイコンを自分で決めたいときは `linkIcon` を使います（`null` を返すと既定の表示）。
+#### リンクの開き方
 
-```tsx
-<LinkShelf linkIcon={(link) => (link.url.endsWith('.pdf') ? <span>📄</span> : null)} />
-```
-
-### リンクの開き方
-
-既定では、リンクは新しいタブで開きます。
+既定では新しいタブで開きます。`sameOriginInSameTab` で同じサイトのものだけ同じタブに、`openLink` で開き方を自分で決められます。どちらでも、`javascript:` などの危ない URL は開きません。
 
 ```tsx
-// 同じサイト（オリジン）のリンクだけ、同じタブで開く
-<LinkShelf sameOriginInSameTab />
-
-// 開き方を自分で決める
 <LinkShelf openLink={(url, link) => window.location.assign(url)} />
 ```
 
-どちらの場合も、`javascript:` などの危ない URL は開きません（`openLink` も呼ばれません）。
+#### ページの名前を取る
 
-### ページの名前を取る
-
-ブラウザからは、ほかのサイトのページを直接読めません（CORS という制限）。名前を自動で付けたいときは、サーバー側で名前を取る処理を用意して、`fetchTitle` で渡します。
+ブラウザからは、ほかのサイトのページを直接読めません（CORS）。名前を自動で付けたいときは、サーバー側で名前を取る処理を用意して `fetchTitle` で渡します。
 
 ```tsx
 <LinkShelf
   fetchTitle={async (url) => {
     const res = await fetch(`/api/title?url=${encodeURIComponent(url)}`)
-    if (!res.ok) return null
-    const data = await res.json()
-    return typeof data.title === 'string' ? data.title : null
+    return res.ok ? ((await res.json()).title ?? null) : null
   }}
 />
 ```
 
-サーバー側の処理の例は [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) にあります（Vercel の関数）。内部ネットワークを覗かれないための対策が入っているので、使うときは削らないでください。
+サーバー側の例は [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts)（Vercel の関数）。内部ネットワークを覗かれないための対策が入っているので、使うときは削らないでください。
 
-### 自分の画面を作る道具（カードの段組みとドラッグ）
+#### 書き出し・読み込み
 
-棚と同じ「カードを段組みに並べ、ドラッグで好きな列・位置へ動かす」画面を、自分のアプリで一から作るときに使える道具です。`<LinkShelf>` を使わなくても、これだけ取り出して使えます（ドラッグは [@dnd-kit](https://dndkit.com/)）。
+`backup` を付けると、見出しに「書き出す」「読み込む」が出ます。書き出すと中身を JSON のファイルに保存し、読み込むときは「置き換える」か「今の中身に足す」かを選べます（閲覧専用では書き出すだけ）。端末の引っ越しや、念のための控えに使えます。
+
+```tsx
+<LinkShelf backup />
+```
+
+---
+
+### 2. 少し変える
+
+作り直さずに、自分のアプリに合わせるための口です。
+
+#### 言葉を変える
+
+`messages` で、画面の言葉を一部だけ差し替えられます（渡さなかった言葉は `locale` のまま）。言葉の一覧は `MESSAGES.ja` / `MESSAGES.en` です。
+
+```tsx
+<LinkShelf messages={{ shelfTitle: 'ノート', addCategory: 'ノートを追加', search: 'ノートを検索' }} />
+```
+
+#### 色を合わせる
+
+色は CSS の変数で決まっています。`.linkshelf` で上書きします（ライト表示だけなら `.linkshelf[data-theme='light']`）。
+
+```css
+.linkshelf {
+  --ls-accent: #2563eb;
+}
+```
+
+| 変数 | 意味 |
+|---|---|
+| `--ls-bg` | 画面の背景 |
+| `--ls-card` | カードの背景 |
+| `--ls-border` | 枠線 |
+| `--ls-text` | 文字 |
+| `--ls-muted` | うすい文字 |
+| `--ls-accent` | 決定のボタン・ドラッグの線 |
+| `--ls-danger` | 削除 |
+
+#### 自分の項目を足す（meta と差し込み口）
+
+カテゴリとリンクには、アプリが自由に使える欄 **`meta`** があります（期日・担当・自分のアプリの id など）。linkshelf はこの中を見ず、変えず、移動や並べ替えでも消さずに残し、保存先にもそのまま入ります。
+
+**差し込み口**（`renderLinkExtra` / `renderCardExtra`）と組み合わせると、linkshelf を作り直さずに、自分の項目を画面に出せます。
+
+```tsx
+const { addLink } = useLinkShelf() // <LinkShelf> の中（actions など）で
+await addLink({ categoryId, title: '防災訓練', url: '', meta: { due: '2026-11-29' } })
+
+<LinkShelf
+  // リンク行の右（星の左）に、期日を出す。何も出さないときは null
+  renderLinkExtra={(link) => (link.meta?.due ? <span>{String(link.meta.due)}</span> : null)}
+  // カードの見出しの右に、期日のある数を出す（links は今見えているもの）
+  renderCardExtra={(category, links) => <span>{links.filter((l) => l.meta?.due).length}</span>}
+/>
+```
+
+`meta` を変えるときは `updateLink(id, { meta })` / `updateCategory(id, { meta })`（渡すと丸ごと置き換え）。アイコンと開き方は `linkIcon`・`openLink` で差し替えられます。
+
+---
+
+### 3. 組み立てる
+
+画面を自分のアプリ用に一から作るときに、linkshelf の中身を使い回すための部品と道具です。
+
+#### データ（ストア）
+
+`<LinkShelfProvider>` の中では、`useLinkShelf()` でデータと操作が使えます（`<LinkShelf>` の中、たとえば `actions` に置いた部品からも使えます）。
+
+```tsx
+import { LinkShelfProvider, useLinkShelf, indexedDbStorage } from 'linkshelf'
+
+function MyList() {
+  const { categories, links, loaded, loadAll, addLink } = useLinkShelf()
+  useEffect(() => void loadAll(), [loadAll]) // 自分で画面を作るときは、最初に読む
+  // …
+}
+
+<LinkShelfProvider storage={indexedDbStorage()}>
+  <MyList />
+</LinkShelfProvider>
+```
+
+| 操作 | すること |
+|---|---|
+| `loadAll()` / `watch()` | 保存先から読む／外からの変更（`subscribe`）を見張る |
+| `addCategory` `updateCategory` `deleteCategory` | カテゴリを足す・変える・消す（消すと中のリンクも消える） |
+| `addLink` `addLinkFromUrl` `updateLink` `deleteLink` `deleteLinks` | リンクを足す（URL から名前も取る）・変える・消す |
+| `moveLink` `moveLinks` `reorderLinks` `sortLinks` | リンクを動かす・並べ替える |
+| `reorderCategories` `arrangeCategories` | カードの順番・列を変える |
+| `toggleCheck` `clearDoneChecks` | チェック項目を付け外す・済んだものを消す |
+| `exportData()` / `importData(data, 'replace' \| 'merge')` | 書き出す・読み込む |
+
+検索・お気に入りの絞り込みは、棚と同じ決まりの **`filterShelf(categories, links, { query, favoritesOnly })`** で（カードごとに `{ category, links }` を返します）。書き出したファイルを読むときは **`parseShelfData(JSON.parse(text))`** で形を確かめます（違えば Error。足りない欄は補う）。
+
+#### 見た目の部品
+
+**`<LinkShelfScope>`** の中に置くと、公開している部品が棚と同じ見た目・言葉になります（見た目はこの中だけに効きます）。
+
+```tsx
+import { LinkShelfScope, Button, Dialog, ConfirmDialog, Input, Textarea, SegmentedControl, LinkIcon } from 'linkshelf'
+
+<LinkShelfScope theme="system" locale="ja">
+  <Button variant="primary" size="sm">足す</Button>
+  <LinkIcon link={link} /> {/* サイトのアイコン（画像・テキストなどの印も） */}
+  <Dialog isOpen={open} onClose={close} title="メモ" size="md">…</Dialog>
+</LinkShelfScope>
+```
+
+| 部品 | 中身 |
+|---|---|
+| `Button` | `variant`：`primary` / `secondary` / `ghost` / `danger`、`size`：`sm` / `md` / `lg` |
+| `Dialog` | 小窓（Esc・外側で閉じる。`size`：`sm`〜`xl`） |
+| `ConfirmDialog` | 消す前の確認（`onConfirm` は Promise） |
+| `Input` / `Textarea` | 入力欄 |
+| `SegmentedControl` | 切り替え（タブ・選択） |
+| `LinkIcon` / `SiteIcon` | リンクのアイコン／サイトのアイコン |
+
+#### カードの段組みとドラッグ
+
+棚と同じ「カードを段組みに並べ、ドラッグで好きな列・位置へ動かす」画面を作る道具です（ドラッグは [@dnd-kit](https://dndkit.com/)）。
 
 | 道具 | すること |
 |---|---|
-| `layoutCards(cards, 列の数)` | カードを列に並べる。動かしたカードは置いた列・順番のとおり、まだ動かしていないカードはいちばん短い列へ詰める |
-| `moveCard(cards, 列の数, 動かすid, 落とす先)` | 動かしたあとの、全カードの列と順番を返す（それを保存する）。落とす先は「あるカードの上・下」か「列のいちばん下」 |
+| `layoutCards(cards, 列の数)` | カードを列に並べる。動かしたカードは置いた列・順番のとおり、まだ動かしていないカードはいちばん短い列へ |
+| `moveCard(cards, 列の数, 動かすid, 落とす先)` | 動かしたあとの、全カードの `column` と `order`（これを保存する）。落とす先は「あるカードの上・下」か「列のいちばん下」 |
 | `flattenCards(cards)` | 1 列で見せるときの順（左上から右へ、段ごとに読む順） |
-| `useColumnCount({ minWidth, gap })` | 要素の幅から列の数を決める（幅が変わると数え直す）。返した ref を外側の要素に付ける |
+| `useColumnCount({ minWidth, gap })` | 要素の幅から列の数（`[ref, 数]`。ref を外側の要素に付ける） |
 | `useDragSensors()` | ドラッグの始め方（マウスは 5px 動かすと、スマホは長押し 0.25 秒で） |
 | `dropPosition(event, overRect)` | 相手の上・下どちらに落とすか。**指（マウス）の位置**で決める（背の高いカードでも、短いカードの上に置ける） |
 
-カードは `{ id, order, column?, size }` の形で渡します（`size` は高さの目安。行の数など）。`moveCard` が返した `column` と `order` を保存しておけば、次から同じ並びになります。
+カードは `{ id, order, column?, size }`（`size` は高さの目安。行の数など）で渡します。
 
 ```tsx
 const [ref, columnCount] = useColumnCount({ minWidth: 280, gap: 12 })
@@ -269,37 +379,22 @@ const sensors = useDragSensors()
 </DndContext>
 ```
 
-### 色を合わせる
+#### 判定の道具
 
-色は CSS の変数で決まっています。上書きすると、アプリの色に合わせられます。
+`isSafeUrl` `safeExternalUrl` `openExternal`（危ない URL を開かない）、`normalizeLinkInput`（入力を URL か 1 行メモかに分ける）、`titleFromUrl` `faviconUrl` `isImageUrl` `isChecked` `parseCheckInput`、`readTextFile`（.txt を読む。上限 `TEXT_LIMIT_BYTES`）、`shrinkImage`（画像を縮める）。
 
-```css
-.linkshelf {
-  --ls-accent: #2563eb; /* 決定のボタン・ドラッグの線 */
-}
-```
-
-| 変数 | 意味 |
-|---|---|
-| `--ls-bg` | 画面の背景 |
-| `--ls-card` | カードの背景 |
-| `--ls-border` | 枠線 |
-| `--ls-text` | 文字 |
-| `--ls-muted` | うすい文字 |
-| `--ls-accent` | 決定のボタン・ドラッグの線 |
-| `--ls-danger` | 削除 |
-
-ライト表示だけ変えるときは `.linkshelf[data-theme='light'] { … }` に書きます。
+---
 
 ### 安全のために
 
 - `javascript:` などの危ない URL は、リンクにしません。保存先から読んだ URL も、開く前にもう一度確かめます。
 - テキストは文字として表示するだけです（HTML として読み込みません）。
 - サイトのアイコンは、そのサイト自身の `/favicon.ico` を読むだけです。外部のアイコンサービスは使いません。
+- 読み込むファイルは、形を確かめてから使います（違えば手元のデータは変えません）。
 
 ### 見本のページ
 
-[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) に、この部品を使った単独のアプリがあります（[デモ](https://linkshelf-chi.vercel.app)）。データは、開いたブラウザの中だけに保存されます（ほかの端末やほかの人には見えません）。画像も、このブラウザの中（IndexedDB）に置きます（[`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts)。`uploadImage` と `loadImage` の書き方の見本）。チェック項目・カードをたたむ・画像（貼り付け・メモを添えて見る）も試せます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
+[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) に、この部品を使った単独のアプリがあります（[デモ](https://linkshelf-chi.vercel.app)）。データも画像も、開いたブラウザの中だけに保存されます（[`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts) は `uploadImage` と `loadImage` の書き方の見本）。チェック項目・カードをたたむ・画像・書き出しと読み込みも試せます。画面の言葉は、ブラウザの言葉に合わせて日本語か英語になります。
 
 ---
 
@@ -309,116 +404,91 @@ const sensors = useDragSensors()
 
 ### Features
 
-- Create cards, rename and recolor them, drag to reorder (one column on phones)
-- Type a URL and press Enter to add a link; any other single line becomes a note (double-click to edit)
-- Longer texts (write one or drop a .txt), search, site icons
-- Favorites (star), with a button next to search to show favorites only
-- Checklist items (to-dos and daily habits, with `checklist`). Turn on "Make it a checklist item" in the add box, or type `[] …` / `[daily] …`. Daily items are unchecked again when the date changes, and the card header shows "done/total"
-- On phones, a category bar to jump between cards; cards can also be made collapsible
-- Optional images (you provide the storage): add by button, drop or paste anywhere, shrink large ones, and view them in place with an editable note; control over how links open
+- Create cards, rename and recolor them, drag them to any column and position (one column on phones)
+- Type a URL and press Enter to add a link; any other single line becomes a note
+- Longer texts (write one or drop a .txt), search, site icons, favorites
+- Checklist items (to-dos and daily habits)
+- Images (you provide the storage): add, paste anywhere, shrink, view with an editable note
+- A category bar and collapsible cards for phones
+- Export / import as a JSON file
 - Light / dark theme, Japanese / English labels
 
-### Ideas
+**Three levels of use** — go only as far as you need:
 
-Because you can mix links, one-line notes and texts freely across cards, linkshelf fits many uses:
+| Level | When | What you use |
+|---|---|---|
+| [1. Use it as is](#1-use-it-as-is) | Drop in a link shelf or notebook | `<LinkShelf>` and its props |
+| [2. Adjust it](#2-adjust-it) | Match wording, colors and fields to your app without rebuilding | `messages`, CSS variables, `meta`, render slots |
+| [3. Build your own](#3-build-your-own) | Build a custom screen but reuse the internals | the store, UI parts, layout and drag tools |
 
-- **Bookmarks**: group the sites you use often into cards such as Work and Hobbies
-- **Notes and reminders**: jot things down as one-line notes; use texts for longer ones
-- **A simple kanban board**: make “To do”, “Doing” and “Done” cards and drag items across (no due dates or assignees)
-- **Research**: collect pages and notes for each topic in its own card
-- **Goals**: list the steps and useful links for each goal
+Data is saved in the browser (IndexedDB) by default. Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app.
 
-Data is saved in the browser (IndexedDB). Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app. Requires `react` and `react-dom` (18 or 19).
+### 1. Use it as is
 
-```tsx
-<LinkShelf locale="en" />
-```
-
-### Props
-
-| Name | Description | Default |
+| Prop | Description | Default |
 |---|---|---|
 | `storage` | Where to save data (see below) | `indexedDbStorage()` |
-| `fetchTitle` | `(url) => Promise<string \| null>` that returns a page title | none (titles come from the URL) |
-| `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
-| `locale` | Language of the labels: `'ja'` (Japanese) / `'en'` (English) | `'ja'` |
+| `fetchTitle` | `(url) => Promise<string \| null>` returning a page title | none (titles come from the URL) |
 | `title` | Heading | `'リンク集'` (`'Links'` in English) |
-| `readOnly` | View-only mode (see below) | `false` |
-| `jumpBar` | Category bar for narrow screens: `'auto'` / `'always'` / `'never'` | `'auto'` |
-| `collapsible` | Let viewers collapse cards | `false` |
-| `collapseKey` | Name used to remember collapsed cards (use different names for two shelves on one site) | `'linkshelf'` |
-| `uploadImage` | `(file, { categoryId }) => Promise<{ url, title? }>` that stores an image (see below) | none (no button) |
-| `imageMaxSide` | Shrink images so the longer side is at most this many pixels before upload | none |
-| `pasteImagesAnywhere` | Accept images pasted anywhere on the page and ask which card to put them on | `false` |
-| `viewImages` | Open image links inside the component, with the link's note shown (and editable) below | `false` |
-| `loadImage` | `(url, link) => Promise<Blob \| string>` to load images (e.g. with an auth header) | none |
-| `linkIcon` | `(link) => ReactNode \| null` to override link icons | none |
-| `openLink` | `(url, link) => void` to control how links open | none (new tab) |
-| `sameOriginInSameTab` | Open same-origin URLs in the same tab | `false` |
-| `checklist` | Let users add checklist items (to-dos and daily habits). Existing items are still shown when `false` | `false` |
-| `actions` | Extra elements on the right side of the header (e.g. a theme toggle) | none |
-| `className` | Extra class on the root element | none |
+| `locale` | `'ja'` / `'en'` | `'ja'` |
+| `theme` | `'light'` / `'dark'` / `'system'` | `'system'` |
+| `readOnly` | View-only mode | `false` |
+| `checklist` | Let users add checklist items (existing ones are always shown) | `false` |
+| `backup` | Show Export / Import buttons | `false` |
+| `jumpBar` | Category bar: `'auto'` (one-column screens) / `'always'` / `'never'` | `'auto'` |
+| `collapsible` / `collapseKey` | Collapsible cards / name used to remember them | `false` / `'linkshelf'` |
+| `uploadImage` | `(file, { categoryId }) => Promise<{ url, title? }>` that stores an image | none (no button) |
+| `imageMaxSide` | Shrink images so the longer side is at most this many pixels | none |
+| `pasteImagesAnywhere` | Accept images pasted anywhere and ask which card to use | `false` |
+| `viewImages` / `loadImage` | Open image links in place with an editable note / how to load private images (`Blob` or URL) | `false` / none |
+| `linkIcon` / `openLink` / `sameOriginInSameTab` | Override icons / how links open / open same-origin links in the same tab | none / new tab / `false` |
+| `messages` / `renderLinkExtra` / `renderCardExtra` | See [2. Adjust it](#2-adjust-it) | none |
+| `actions` / `className` | Extra header elements / class on the root | none |
 
 `storage` and `fetchTitle` are read once, on first render.
 
-### Storage
+**Storage.** `indexedDbStorage({ name })` (default) or `memoryStorage()`. For your own backend, pass an object implementing `LinkShelfStorage`: `loadAll`, `putCategory`, `deleteCategory`, `putLink`, `deleteLinks`, optionally `bulkPut`, and optionally `subscribe(onChange)` (returns an unsubscribe function) so the shelf reloads when data changes from outside (e.g. sync).
+
+**View-only.** `readOnly` hides editing UI only; your server must also reject writes.
+
+**Phones.** The category bar sticks below `--ls-sticky-top` (set it to your fixed header's height).
+
+**Images.** Your `uploadImage` stores the file and returns its URL; the shelf adds it as a link. JPEG, PNG and WebP are accepted; throw to show a short error. `imageMaxSide={2000}` shrinks large photos first, `pasteImagesAnywhere` handles pastes outside cards, and `viewImages` opens images in a dialog with the link's `description` as an editable note (Ctrl/⌘-click still opens a new tab). For private images return a `Blob` from `loadImage`; the object URL is created and revoked for you.
+
+**Links** open in a new tab by default; `javascript:` and other unsafe URLs are never opened.
+
+**Page titles** need a server (CORS). [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) is an example Vercel function with SSRF protections; keep them if you reuse it.
+
+**Backup.** With `backup`, Export saves a JSON file and Import asks whether to replace the shelf or add to it (view-only: export only).
+
+### 2. Adjust it
+
+**Wording.** `messages` overrides any labels; the rest follow `locale`. See `MESSAGES.ja` / `MESSAGES.en` for the keys.
 
 ```tsx
-import { LinkShelf, indexedDbStorage, memoryStorage } from 'linkshelf'
-
-<LinkShelf storage={indexedDbStorage({ name: 'my-links' })} />
-<LinkShelf storage={memoryStorage()} />
+<LinkShelf messages={{ shelfTitle: 'Notes', addCategory: 'New notebook' }} />
 ```
 
-To use your own backend, pass an object that implements `LinkShelfStorage`
-(`loadAll`, `putCategory`, `deleteCategory`, `putLink`, `deleteLinks`, and optionally `bulkPut`).
-Add an optional `subscribe(onChange)` that returns an unsubscribe function, and the shelf reloads whenever your storage changes from outside (for example, when another device syncs).
+**Colors.** Override `--ls-bg`, `--ls-card`, `--ls-border`, `--ls-text`, `--ls-muted`, `--ls-accent`, `--ls-danger` on `.linkshelf` (or `.linkshelf[data-theme='light']`).
 
-### View-only mode
-
-With `readOnly`, visitors can open links, search and show favorites only, but cannot add, edit, delete, reorder or star anything.
+**Your own fields.** Categories and links have a free **`meta`** object for your app (due dates, owners, ids…). linkshelf never reads or changes it and keeps it through moves and reorders. Show it with the render slots:
 
 ```tsx
-<LinkShelf storage={siteStorage} readOnly={!isEditor} />
+<LinkShelf
+  renderLinkExtra={(link) => (link.meta?.due ? <span>{String(link.meta.due)}</span> : null)}
+  renderCardExtra={(category, links) => <span>{links.filter((l) => l.meta?.due).length}</span>}
+/>
 ```
 
-`readOnly` only hides the editing UI. To really prevent changes, your storage (server) must also reject writes from anyone but the editors.
+Set it with `addLink({ …, meta })` or `updateLink(id, { meta })` (replaces the whole object).
 
-### Narrow screens
+### 3. Build your own
 
-On phones, cards stack in one column. Two options help:
+**Data.** Inside `<LinkShelfProvider storage={…}>` (or inside `<LinkShelf>`, e.g. in `actions`), `useLinkShelf()` gives the data and actions: `loadAll`, `watch`, `addCategory`, `updateCategory`, `deleteCategory`, `addLink`, `addLinkFromUrl`, `updateLink`, `deleteLink`, `deleteLinks`, `moveLink`, `moveLinks`, `reorderLinks`, `sortLinks`, `reorderCategories`, `arrangeCategories`, `toggleCheck`, `clearDoneChecks`, `exportData`, `importData(data, 'replace' | 'merge')`. Call `loadAll()` once when you build your own screen. `filterShelf(categories, links, { query, favoritesOnly })` applies the shelf's search rules; `parseShelfData(JSON.parse(text))` validates an exported file.
 
-- **Category bar** (`jumpBar`): a sticky row of category names; tap one to jump to its card. `'auto'` (default) shows it only when cards are in one column.
-- **Collapsible cards** (`collapsible`): a button on each card header folds its contents. The state is remembered in the viewer's browser. Cards open automatically while searching or showing favorites only.
+**UI parts.** Inside **`<LinkShelfScope theme locale messages>`**, the exported `Button`, `Dialog`, `ConfirmDialog`, `Input`, `Textarea`, `SegmentedControl`, `LinkIcon` and `SiteIcon` look and read like the shelf (styles stay inside the scope).
 
-If your app has a fixed header, set `--ls-sticky-top` on `.linkshelf` to its height so the bar stops below it.
-
-### Images
-
-Pass `uploadImage` to show an “Add image” button on each card (hidden in `readOnly`). Images can also be dropped on a card or pasted while the card has focus; text and URL pastes work as before. Your function stores the file and returns its URL (relative URLs are fine), and a link is added at the end of the card, titled “Image (YYYY/MM/DD)” unless you return a `title`. If it throws, a short error is shown on the card and nothing is added. JPEG, PNG and WebP are accepted; check size limits inside your function.
-
-```tsx
-<LinkShelf uploadImage={async (file) => ({ url: await myUpload(file) })} />
-```
-
-Where images are stored is up to you: swap the `uploadImage` function. `imageMaxSide={2000}` shrinks large photos and screenshots first. With `pasteImagesAnywhere`, an image pasted outside any card opens a small dialog to choose the card (the last choice is remembered); pastes into text fields are left alone.
-
-With `viewImages`, clicking an image link opens the image in a dialog with the link's note (`description`) below it; users can write or edit the note there (view only in `readOnly`). Ctrl/⌘-click still opens a new tab. For private images, pass `loadImage`; return a `Blob` and the component creates and revokes the object URL for you.
-
-Links whose path ends in `.jpg`, `.jpeg`, `.png`, `.webp` or `.gif` get an image icon. Use `linkIcon` to override icons (return `null` for the default).
-
-### Opening links
-
-Links open in a new tab by default. `sameOriginInSameTab` opens same-origin URLs in the current tab, and `openLink(url, link)` lets you decide yourself. Unsafe URLs such as `javascript:` are never opened either way.
-
-### Page titles
-
-Browsers cannot read other sites directly (CORS), so fetching titles needs a server. Pass a `fetchTitle` function that calls your endpoint.
-[`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) is an example Vercel function with SSRF protections (address checks, redirect checks, size and time limits). Keep them if you reuse it.
-
-### Building your own board
-
-The layout and drag logic behind the shelf is exported, so you can build your own card board (cards in columns, drag to any column and position) without `<LinkShelf>` (drag uses [@dnd-kit](https://dndkit.com/)):
+**Layout and drag** (with [@dnd-kit](https://dndkit.com/)):
 
 - `layoutCards(cards, columnCount)` places cards into columns: moved cards keep their saved column and order, others fill the shortest column.
 - `moveCard(cards, columnCount, dragId, drop)` returns every card's new `column` and `order` (save them). `drop` is `{ kind: 'card', id, position: 'before' | 'after' }` or `{ kind: 'end', column }`.
@@ -427,21 +497,20 @@ The layout and drag logic behind the shelf is exported, so you can build your ow
 - `useDragSensors()` gives the shelf's sensors (mouse: 5px, touch: 250 ms long press).
 - `dropPosition(event, overRect)` decides before/after from the **pointer position**, so tall cards can be dropped above short ones.
 
-Cards are `{ id, order, column?, size }` (`size` is a height estimate, such as a row count).
+Cards are `{ id, order, column?, size }` (`size` is a height estimate, such as a row count). See the Japanese section for a full example.
 
-### Theming
-
-Override the CSS variables on `.linkshelf`: `--ls-bg`, `--ls-card`, `--ls-border`, `--ls-text`, `--ls-muted`, `--ls-accent`, `--ls-danger`.
+**Helpers.** `isSafeUrl`, `safeExternalUrl`, `openExternal`, `normalizeLinkInput`, `titleFromUrl`, `faviconUrl`, `isImageUrl`, `isChecked`, `parseCheckInput`, `readTextFile`, `shrinkImage`.
 
 ### Security
 
 - Unsafe URLs such as `javascript:` are never turned into links, and URLs are checked again before opening.
 - Texts are rendered as plain text, never as HTML.
 - Site icons are loaded from each site's own `/favicon.ico`; no third-party icon service is used.
+- Imported files are validated before use; on failure your data is left unchanged.
 
 ### Example app
 
-[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) is a standalone app built with this component ([demo](https://linkshelf-chi.vercel.app)). Everything, images included, is stored only in your browser ([`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts) shows how to write `uploadImage` and `loadImage`). You can try checklists, collapsible cards, and images (paste anywhere, view with a note). Labels follow your browser language (Japanese or English).
+[`examples/web`](https://github.com/shiodome47/linkshelf/tree/main/examples/web) is a standalone app built with this component ([demo](https://linkshelf-chi.vercel.app)). Everything, images included, is stored only in your browser ([`localImages.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/src/localImages.ts) shows how to write `uploadImage` and `loadImage`). You can try checklists, collapsible cards, images and export / import. Labels follow your browser language.
 
 ## License
 

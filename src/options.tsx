@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { Link } from './types'
+import type { Category, Link } from './types'
 
 /** 画像を受け取り、置いた先の URL（と名前）を返す。<LinkShelf uploadImage> に渡す */
 export type UploadImage = (file: File, ctx: { categoryId: string }) => Promise<{ url: string; title?: string }>
@@ -21,6 +21,10 @@ export interface LinkShelfOptions {
   viewImages?: boolean
   /** 画像ビューアで画像を読む方法（合言葉の要る画像など）。Blob か、表示に使う URL を返す */
   loadImage?: LoadImage
+  /** リンク行の右（星の左）に、アプリが自分の表示を差し込む */
+  renderLinkExtra?: (link: Link) => ReactNode
+  /** カードの見出しの右（数の左）に、アプリが自分の表示を差し込む */
+  renderCardExtra?: (category: Category, links: Link[]) => ReactNode
 }
 
 /** 画像ビューアで画像を読む。Blob（部品が表示用の URL にする）か、そのまま <img src> に使える URL を返す */
