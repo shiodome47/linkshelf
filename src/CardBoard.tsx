@@ -146,8 +146,14 @@ export function CardBoard<T extends CardLike>({
       const d = c.data.current
       return mineDrop(d) && !(d.kind === 'card' && d.id === activeCard)
     })
-    // 指（マウス）の位置で。キーボードで動かすときは、いちばん近いもの
-    return (args.pointerCoordinates ? pointerWithin : closestCenter)({ ...args, droppableContainers: targets })
+    // 指（マウス）の位置で決める
+    if (args.pointerCoordinates) return pointerWithin({ ...args, droppableContainers: targets })
+    // キーボードで動かすときは、動かした先（つかんだカードの左上の角）にあるもので。
+    // いちばん近いもの（真ん中どうし）で選ぶと、背の高い「列の下の空き」ばかりが選ばれてしまう
+    const r = args.collisionRect
+    const corner = { x: r.left + 1, y: r.top + 1 }
+    const hits = pointerWithin({ ...args, droppableContainers: targets, pointerCoordinates: corner })
+    return hits.length ? hits : closestCenter({ ...args, droppableContainers: targets })
   }
 
   const targetOf = (e: DragMoveEvent | DragOverEvent | DragEndEvent): CardDrop | null => {
@@ -267,7 +273,7 @@ function Slot<T extends CardLike>({
 }) {
   const drag = useDraggable({ id: `${board}card:${card.id}`, data: { cardBoard: board, id: card.id } satisfies CardDragData, disabled })
   const dropZone = useDroppable({
-    id: `${board}drop:${card.id}`,
+    id: `${board}card:${card.id}`, // つかむものと同じ id（キーボードで動かす道具が、つかんだカードの受け皿を id で探すため）
     data: { cardBoard: board, kind: 'card', id: card.id } satisfies CardDropData,
     disabled,
   })
