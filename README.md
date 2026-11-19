@@ -383,6 +383,16 @@ const [duties, setDuties] = useState(loadDuties())
 | `sensors` | ドラッグの始め方を変える（キーボードを足すなど） |
 | `dnd` | カードの中の行など、カード以外のドラッグを同じ DndContext で扱うとき（棚はリンクのドラッグをここで扱っています） |
 
+キーボードでも動かせるようにするときは、`sensors` に足します（つかむところにフォーカスして スペース → 矢印 → スペース）。
+
+```tsx
+import { KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+
+const sensors = useSensors(...useDragSensors(), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+<CardBoard sensors={sensors} … />
+```
+
 `renderCard` の 2 つ目には、`dragHandle`（つかむところに `{...dragHandle}` と付ける）・`isDragging`・`dropEdge`（このカードの上・下に落とすところなら `'before'` / `'after'`）・`column`（何列目か）が届きます。
 
 #### 段組みとドラッグの道具
