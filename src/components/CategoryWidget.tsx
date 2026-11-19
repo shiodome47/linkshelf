@@ -7,12 +7,9 @@ import { isSameOrigin, safeExternalUrl } from '../utils/url'
 import { useOptions } from '../options'
 import { categoryColorClass } from '../categoryColors'
 import {
-  cardDragId,
-  cardDropId,
   linkDragId,
   linkDropId,
   listDropId,
-  type CardDragData,
   type DropData,
   type LinkDragData,
   type LinkDropIndicator,
@@ -26,6 +23,7 @@ import { ImageViewer } from './ImageViewer'
 import { IMAGE_TYPES, imageFileOf, useImagePlacer } from '../image'
 import { useMessages } from '../i18n'
 import { readTextFile, TEXT_ACCEPT } from '../textFile'
+import type { CardBoardCardState } from '../CardBoard'
 
 interface CategoryWidgetProps {
   category: Category
@@ -43,9 +41,10 @@ interface CategoryWidgetProps {
   onToggleCollapse?: () => void
   /** リンクを落とす位置の目印 */
   indicator: LinkDropIndicator
-  /** カードを落とす先として選ばれている */
-  /** カードをここ（上か下）に落とすときの目印 */
-  cardDropEdge?: 'before' | 'after' | null
+  /** カードをつかむところ（<CardBoard> から。並べ替えないときは渡さない） */
+  dragHandle?: CardBoardCardState['dragHandle']
+  /** このカードをドラッグしているところ */
+  dragging?: boolean
   /** 直前までドラッグしていたか（ドラッグ直後のクリックでリンクを開かないため） */
   wasDragging: () => boolean
   onManage: (category: Category) => void
@@ -66,7 +65,8 @@ export function CategoryWidget({
   collapsed = false,
   onToggleCollapse,
   indicator,
-  cardDropEdge = null,
+  dragHandle,
+  dragging = false,
   wasDragging,
   onManage,
   onEditLink,
@@ -128,16 +128,6 @@ export function CategoryWidget({
   }
   const [renamingId, setRenamingId] = useState<string | null>(null)
 
-  const cardDrag = useDraggable({
-    id: cardDragId(category.id),
-    data: { kind: 'card', categoryId: category.id } satisfies CardDragData,
-    disabled: readOnly,
-  })
-  const cardDrop = useDroppable({
-    id: cardDropId(category.id),
-    data: { kind: 'card', categoryId: category.id } satisfies DropData,
-    disabled: readOnly,
-  })
   const listDrop = useDroppable({
     id: listDropId(category.id),
     data: { kind: 'list', categoryId: category.id } satisfies DropData,
@@ -148,10 +138,6 @@ export function CategoryWidget({
 
   return (
     <section
-      ref={(node) => {
-        cardDrag.setNodeRef(node)
-        cardDrop.setNodeRef(node)
-      }}
       aria-label={category.name}
       data-ls-category={category.id}
       // 画像を受け付けるときは、カードにフォーカスを当てて貼り付けられるようにする
@@ -165,31 +151,18 @@ export function CategoryWidget({
         'group/card relative scroll-mt-[calc(var(--ls-sticky-top,0px)+3.5rem)] rounded-xl border bg-neutral-900 transition-colors',
         dragOver ? 'border-accent-500' : 'border-neutral-800',
         canUpload && 'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
-        cardDrag.isDragging && 'opacity-40',
+        dragging && 'opacity-40',
       )}
     >
-      {/* カードを落とす位置の線（カードとカードのあいだ） */}
-      {cardDropEdge && (
-        <div
-          aria-hidden="true"
-          data-testid="card-drop-line"
-          className={cn(
-            'pointer-events-none absolute inset-x-1 z-10 h-1 rounded-full bg-accent-500',
-            cardDropEdge === 'before' ? '-top-2.5' : '-bottom-2.5',
-          )}
-        />
-      )}
       {/* 見出し */}
       <header className={cn('flex items-center gap-2 px-4 pt-3.5', collapsed ? 'pb-3.5' : 'pb-2')}>
-        {!readOnly && (
+        {!readOnly && dragHandle && (
           <button
-            ref={cardDrag.setActivatorNodeRef}
             type="button"
             aria-label={m.reorderCard(category.name)}
             title={m.reorderCardHint}
             className="absolute left-0.5 top-3.5 flex h-6 w-4 cursor-grab touch-none items-center justify-center text-neutral-600 transition-opacity hover:text-neutral-300 md:opacity-0 md:group-hover/card:opacity-100"
-            {...cardDrag.attributes}
-            {...cardDrag.listeners}
+            {...dragHandle}
           >
             <GripVertical className="h-3.5 w-3.5" />
           </button>

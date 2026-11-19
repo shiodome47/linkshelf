@@ -49,7 +49,7 @@ export function App() {
 |---|---|---|
 | [1. そのまま使う](#1-そのまま使う) | リンク集・メモ帳としてそのまま置きたい | `<LinkShelf>` と設定（props） |
 | [2. 少し変える](#2-少し変える) | 言葉・色・項目を自分のアプリに合わせたい（作り直さずに） | `messages`・CSS の変数・`meta`・差し込み口 |
-| [3. 組み立てる](#3-組み立てる) | 自分のアプリ用に画面を一から作りたい（中身の仕組みは使い回したい） | ストア・見た目の部品・段組みとドラッグの道具 |
+| [3. 組み立てる](#3-組み立てる) | 自分のアプリ用に画面を一から作りたい（中身の仕組みは使い回したい） | ストア・見た目の部品・`<CardBoard>`（カードを並べるボード）・段組みとドラッグの道具 |
 
 ### こんな使い方も
 
@@ -58,6 +58,7 @@ export function App() {
 - **かんたんなカンバン**：「やること」「作業中」「終わった」のカードを作り、項目をドラッグで移していく
 - **調べものの整理**：テーマごとのカードに、参考にしたページとメモをまとめる
 - **目標の管理**：目標ごとのカードに、やることと、役に立つリンクを並べる
+- **リンク集ではないボード**：`<CardBoard>` を使えば、カードの中身を自分で書いて、同じ並べ方・ドラッグのボードを作れる（例：自治会の役員の年間のやること）
 
 データは、既定ではブラウザの中（IndexedDB）に保存されます。見た目は `.linkshelf` の中だけに効くので、Tailwind が無いアプリでも、あるアプリでも、ほかの部分を崩しません。
 
@@ -343,9 +344,50 @@ import { LinkShelfScope, Button, Dialog, ConfirmDialog, Input, Textarea, Segment
 | `SegmentedControl` | 切り替え（タブ・選択） |
 | `LinkIcon` / `SiteIcon` | リンクのアイコン／サイトのアイコン |
 
-#### カードの段組みとドラッグ
+#### カードを並べるボード（`<CardBoard>`）
 
-棚と同じ「カードを段組みに並べ、ドラッグで好きな列・位置へ動かす」画面を作る道具です（ドラッグは [@dnd-kit](https://dndkit.com/)）。
+棚と同じ「カードを段組みに並べ、ドラッグで好きな列・位置へ動かす」画面を、**カードの中身を書くだけ**で作れる部品です。カードの中身はリンクでなくても構いません（役員のやること、プロジェクト、メモなど）。
+
+```tsx
+import { CardBoard } from 'linkshelf'
+
+// カードは { id, order, column?, size } ＋ 自由な項目（size は高さの目安。中の行の数など）
+const [duties, setDuties] = useState(loadDuties())
+
+<CardBoard
+  cards={duties}
+  renderCard={(duty, { dragHandle, isDragging }) => (
+    <section style={{ opacity: isDragging ? 0.5 : 1 }}>
+      <button type="button" aria-label={`「${duty.title}」を動かす`} {...dragHandle}>⋮⋮</button>
+      <h3>{duty.title}</h3>
+    </section>
+  )}
+  onMove={(places) => saveDuties(places)} // 全カードの { id, column, order }。変わったものだけ保存すればよい
+  addon={<button onClick={addDuty}>役目を足す</button>} // いちばん短い列の下に出る
+/>
+```
+
+- 置いた列と順番を覚えていれば、そのとおりに並べます。画面が狭くて列が足りないとき（スマホ）は、左上から読む順に 1 列で並べ、そこで動かしても PC で置いた列は崩れません
+- 落とす先は指（マウス）の位置で決まります（カードの上半分なら上、下半分なら下。列の下の空きなら、その列のいちばん下）。背の高いカードでも、短いカードの上に置けます
+- 見た目は style で付けているので、`.linkshelf` の外（自分のアプリの CSS の中）でもそのまま使えます
+
+| 設定 | 中身 |
+|---|---|
+| `cards` / `renderCard` / `onMove` | カード・1 枚の描き方・動かしたとき（必須） |
+| `minColumnWidth` / `gap` / `maxColumns` | 列の幅の下限（既定 300）・カードのあいだ（既定 16）・列の数の上限 |
+| `columnCount` | 列の数を外で決めるとき（渡すと幅からは数えない） |
+| `disabled` | 並べ替えを止める（読むだけ・絞り込み中など） |
+| `renderOverlay` | ドラッグ中に指について動かすもの。渡さなければ、カードそのものが動く |
+| `addon` | いちばん短い列の下に置くもの |
+| `dropLineColor` / `columnEndHeight` | 落とす先の線の色・列の下の空きの高さ |
+| `sensors` | ドラッグの始め方を変える（キーボードを足すなど） |
+| `dnd` | カードの中の行など、カード以外のドラッグを同じ DndContext で扱うとき（棚はリンクのドラッグをここで扱っています） |
+
+`renderCard` の 2 つ目には、`dragHandle`（つかむところに `{...dragHandle}` と付ける）・`isDragging`・`dropEdge`（このカードの上・下に落とすところなら `'before'` / `'after'`）・`column`（何列目か）が届きます。
+
+#### 段組みとドラッグの道具
+
+`<CardBoard>` の中で使っている道具です。もっと細かく自分で組みたいときに（ドラッグは [@dnd-kit](https://dndkit.com/)）。
 
 | 道具 | すること |
 |---|---|
@@ -355,29 +397,6 @@ import { LinkShelfScope, Button, Dialog, ConfirmDialog, Input, Textarea, Segment
 | `useColumnCount({ minWidth, gap })` | 要素の幅から列の数（`[ref, 数]`。ref を外側の要素に付ける） |
 | `useDragSensors()` | ドラッグの始め方（マウスは 5px 動かすと、スマホは長押し 0.25 秒で） |
 | `dropPosition(event, overRect)` | 相手の上・下どちらに落とすか。**指（マウス）の位置**で決める（背の高いカードでも、短いカードの上に置ける） |
-
-カードは `{ id, order, column?, size }`（`size` は高さの目安。行の数など）で渡します。
-
-```tsx
-const [ref, columnCount] = useColumnCount({ minWidth: 280, gap: 12 })
-const columns = layoutCards(cards, columnCount)
-const sensors = useDragSensors()
-
-<DndContext
-  sensors={sensors}
-  onDragEnd={(e) => {
-    if (!e.over) return
-    const drop = { kind: 'card' as const, id: String(e.over.id), position: dropPosition(e, e.over.rect) }
-    save(moveCard(cards, columnCount, String(e.active.id), drop))
-  }}
->
-  <div ref={ref} style={{ display: 'flex', gap: 12 }}>
-    {columns.map((col, i) => (
-      <div key={i} style={{ flex: 1 }}>{col.map((c) => <Card key={c.id} card={c} />)}</div>
-    ))}
-  </div>
-</DndContext>
-```
 
 #### 判定の道具
 
@@ -419,7 +438,7 @@ const sensors = useDragSensors()
 |---|---|---|
 | [1. Use it as is](#1-use-it-as-is) | Drop in a link shelf or notebook | `<LinkShelf>` and its props |
 | [2. Adjust it](#2-adjust-it) | Match wording, colors and fields to your app without rebuilding | `messages`, CSS variables, `meta`, render slots |
-| [3. Build your own](#3-build-your-own) | Build a custom screen but reuse the internals | the store, UI parts, layout and drag tools |
+| [3. Build your own](#3-build-your-own) | Build a custom screen but reuse the internals | the store, UI parts, `<CardBoard>` (a board of your own cards), layout and drag tools |
 
 Data is saved in the browser (IndexedDB) by default. Styles only apply inside `.linkshelf`, so it works with or without Tailwind in your app.
 
@@ -488,7 +507,9 @@ Set it with `addLink({ …, meta })` or `updateLink(id, { meta })` (replaces the
 
 **UI parts.** Inside **`<LinkShelfScope theme locale messages>`**, the exported `Button`, `Dialog`, `ConfirmDialog`, `Input`, `Textarea`, `SegmentedControl`, `LinkIcon` and `SiteIcon` look and read like the shelf (styles stay inside the scope).
 
-**Layout and drag** (with [@dnd-kit](https://dndkit.com/)):
+**Card board.** **`<CardBoard cards renderCard onMove>`** gives you the shelf's masonry layout and drag-and-drop for any kind of card — you only write the card. Cards are `{ id, order, column?, size }` plus your own fields. `renderCard(card, { dragHandle, isDragging, dropEdge, column })`: spread `dragHandle` on the grip. `onMove(places)` receives every card's `{ id, column, order }`. Other props: `minColumnWidth` (300), `gap` (16), `maxColumns`, `columnCount`, `disabled`, `renderOverlay`, `addon` (shown under the shortest column), `dropLineColor`, `columnEndHeight`, `sensors`, and `dnd` (handle other drags, such as rows inside cards, in the same DndContext). It is styled inline, so it works outside `.linkshelf` too.
+
+**Layout and drag tools** used by `<CardBoard>` (with [@dnd-kit](https://dndkit.com/)):
 
 - `layoutCards(cards, columnCount)` places cards into columns: moved cards keep their saved column and order, others fill the shortest column.
 - `moveCard(cards, columnCount, dragId, drop)` returns every card's new `column` and `order` (save them). `drop` is `{ kind: 'card', id, position: 'before' | 'after' }` or `{ kind: 'end', column }`.
@@ -497,7 +518,7 @@ Set it with `addLink({ …, meta })` or `updateLink(id, { meta })` (replaces the
 - `useDragSensors()` gives the shelf's sensors (mouse: 5px, touch: 250 ms long press).
 - `dropPosition(event, overRect)` decides before/after from the **pointer position**, so tall cards can be dropped above short ones.
 
-Cards are `{ id, order, column?, size }` (`size` is a height estimate, such as a row count). See the Japanese section for a full example.
+Cards are `{ id, order, column?, size }` (`size` is a height estimate, such as a row count).
 
 **Helpers.** `isSafeUrl`, `safeExternalUrl`, `openExternal`, `normalizeLinkInput`, `titleFromUrl`, `faviconUrl`, `isImageUrl`, `isChecked`, `parseCheckInput`, `readTextFile`, `shrinkImage`.
 

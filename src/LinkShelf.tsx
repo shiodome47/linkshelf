@@ -1,13 +1,4 @@
-import {
-  DndContext,
-  DragOverlay,
-  pointerWithin,
-  useDroppable,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragMoveEvent,
-  type DragStartEvent,
-} from '@dnd-kit/core'
+import { pointerWithin, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type DragStartEvent } from '@dnd-kit/core'
 import { FolderPlus, Link as LinkGlyph, RefreshCw, Search, Star, X } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from './components/ui/Button'
@@ -20,21 +11,14 @@ import { LinkCrudDialog } from './components/LinkCrudDialog'
 import { RetitleDialog } from './components/RetitleDialog'
 import { LinkIcon as ResourceIcon } from './components/SiteIcon'
 import { LinkShelfProvider, useLinkShelf } from './context'
-import {
-  columnDropId,
-  type CardDragData,
-  type CardDropIndicator,
-  type DropData,
-  type LinkDragData,
-  type LinkDropIndicator,
-} from './dnd/types'
-import { layoutCards, moveCard, type CardLike } from './layout'
+import { type DropData, type LinkDragData, type LinkDropIndicator } from './dnd/types'
+import { CardBoard } from './CardBoard'
 import { indexedDbStorage } from './storage/indexedDb'
 import type { LinkShelfStorage } from './storage/types'
 import { groupLinksByCategory, type FetchTitle } from './store'
 import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
-import { dropPosition, useColumnCount, useDragSensors } from './board'
+import { dropPosition, useColumnCount } from './board'
 import { filterShelf } from './filter'
 import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale, type LinkShelfMessages } from './i18n'
 import { OptionsProvider, type LoadImage, type UploadImage } from './options'
@@ -278,74 +262,46 @@ function Shelf({
   // ─── 段組み（列数は画面幅から決め、カードを低い列から順に詰める） ───
   const [containerRef, columnCount] = useColumnCount({ minWidth: MIN_COLUMN_WIDTH, gap: COLUMN_GAP })
 
-  // ドラッグで並べた列（何列目の何番目か）を覚えていれば、そのとおりに並べる（layout.ts）
-  const columns = useMemo(
+  // 棚のカード（<CardBoard> で並べる。ドラッグで並べた列と順番を覚えていれば、そのとおりに）
+  const cards = useMemo(
     () =>
-      layoutCards(
-        visible.map((item) => ({
-          id: item.category.id,
-          order: item.category.order,
-          column: item.category.column,
-          // たたんだカードは見出しだけの高さ
-          size: isCollapsed(item.category.id) ? 0 : item.links.length,
-          item,
-        })),
-        columnCount,
-      ).map((col) => col.map((c) => c.item)),
+      visible.map((item) => ({
+        id: item.category.id,
+        order: item.category.order,
+        column: item.category.column,
+        // たたんだカードは見出しだけの高さ
+        size: isCollapsed(item.category.id) ? 0 : item.links.length,
+        item,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visible, columnCount, collapsedIds, filtering],
-  )
-  const cardLikes = useCallback(
-    (): CardLike[] =>
-      categories.map((c) => ({ id: c.id, order: c.order, column: c.column, size: linksByCategory.get(c.id)?.length ?? 0 })),
-    [categories, linksByCategory],
+    [visible, collapsedIds, filtering],
   )
 
   // ─── ドラッグ＆ドロップ ────────────────────────────────────
-  const sensors = useDragSensors()
-  const [active, setActive] = useState<LinkDragData | CardDragData | null>(null)
+  // カードのドラッグは <CardBoard> が受け持つ。ここでは、カードの中のリンクのドラッグを扱う
+  const [active, setActive] = useState<LinkDragData | null>(null)
   const [indicator, setIndicator] = useState<LinkDropIndicator>(null)
-  const [cardTarget, setCardTarget] = useState<CardDropIndicator>(null)
   const draggedAt = useRef(0)
   const wasDragging = useCallback(() => Date.now() - draggedAt.current < 300, [])
 
-  /** ドラッグしているものに合う落とし先だけを当たり判定に使う */
+  /** リンクをドラッグしているときは、リンク行と一覧だけを落とし先にする */
   const collision: CollisionDetection = useCallback((args) => {
-    const kind = (args.active.data.current as LinkDragData | CardDragData | undefined)?.kind
     const containers = args.droppableContainers.filter((c) => {
       const drop = c.data.current as DropData | undefined
-      return kind === 'card' ? drop?.kind === 'card' || drop?.kind === 'column' : drop?.kind === 'link' || drop?.kind === 'list'
+      return drop?.kind === 'link' || drop?.kind === 'list'
     })
     const hits = pointerWithin({ ...args, droppableContainers: containers })
-    if (kind === 'link') {
-      // リンク行に重なっていれば、それを優先（一覧の枠より細かい位置が分かる）
-      const row = hits.find((h) => (containers.find((c) => c.id === h.id)?.data.current as DropData)?.kind === 'link')
-      if (row) return [row]
-    }
-    return hits
+    // リンク行に重なっていれば、それを優先（一覧の枠より細かい位置が分かる）
+    const row = hits.find((h) => (containers.find((c) => c.id === h.id)?.data.current as DropData)?.kind === 'link')
+    return row ? [row] : hits
   }, [])
 
   const computeTarget = (event: DragMoveEvent) => {
     const { active: a, over } = event
-    const data = a.data.current as LinkDragData | CardDragData | undefined
+    const data = a.data.current as LinkDragData | undefined
     const drop = over?.data.current as DropData | undefined
-    if (!data || !drop || !over) {
+    if (data?.kind !== 'link' || !drop || !over) {
       setIndicator(null)
-      setCardTarget(null)
-      return
-    }
-    if (data.kind === 'card') {
-      if (drop.kind === 'column' && drop.column !== undefined) {
-        setCardTarget({ kind: 'end', column: drop.column })
-        return
-      }
-      if (drop.kind !== 'card' || drop.categoryId === data.categoryId) {
-        setCardTarget(null)
-        return
-      }
-      // 指（マウス）が相手のカードの上半分なら上、下半分なら下へ
-      const position = dropPosition(event, over.rect)
-      setCardTarget({ kind: 'card', categoryId: drop.categoryId, position })
       return
     }
     if (drop.kind === 'link' && drop.linkId) {
@@ -361,34 +317,21 @@ function Shelf({
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActive((event.active.data.current as LinkDragData | CardDragData) ?? null)
+    const data = event.active.data.current as LinkDragData | undefined
+    setActive(data?.kind === 'link' ? data : null)
   }
 
   const resetDrag = () => {
     draggedAt.current = Date.now()
     setActive(null)
     setIndicator(null)
-    setCardTarget(null)
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    const data = event.active.data.current as LinkDragData | CardDragData | undefined
+    const data = event.active.data.current as LinkDragData | undefined
     const currentIndicator = indicator
-    const currentCardTarget = cardTarget
     resetDrag()
-    if (!data) return
-
-    if (data.kind === 'card') {
-      if (!currentCardTarget) return
-      const drop =
-        currentCardTarget.kind === 'end'
-          ? currentCardTarget
-          : { kind: 'card' as const, id: currentCardTarget.categoryId, position: currentCardTarget.position }
-      await arrangeCategories(moveCard(cardLikes(), columnCount, data.categoryId, drop))
-      return
-    }
-
-    if (!currentIndicator) return
+    if (data?.kind !== 'link' || !currentIndicator) return
     if (currentIndicator.kind === 'list') {
       await moveLink(data.linkId, currentIndicator.categoryId)
       return
@@ -400,8 +343,7 @@ function Shelf({
     await moveLink(data.linkId, target.categoryId, currentIndicator.position === 'before' ? index : index + 1)
   }
 
-  const activeLink = active?.kind === 'link' ? links.find((l) => l.id === active.linkId) : undefined
-  const activeCategory = active?.kind === 'card' ? categories.find((c) => c.id === active.categoryId) : undefined
+  const activeLink = active ? links.find((l) => l.id === active.linkId) : undefined
 
   const dialogOnTop =
     editingLink !== null || deletingLinks !== null || deletingCategory !== null || retitling !== null
@@ -507,56 +449,52 @@ function Shelf({
               }}
             />
           )}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={collision}
-            onDragStart={handleDragStart}
-            onDragMove={computeTarget}
-            onDragOver={computeTarget}
-            onDragEnd={(e) => void handleDragEnd(e)}
-            onDragCancel={resetDrag}
-          >
-            <div ref={containerRef} className="flex items-stretch p-4" style={{ gap: COLUMN_GAP }}>
-              {columns.map((col, i) => (
-                <div key={i} className="flex min-w-0 flex-1 flex-col" style={{ gap: COLUMN_GAP }} data-testid="card-column">
-                  {col.map(({ category, links: catLinks }) => (
-                    <CategoryWidget
-                      key={category.id}
-                      category={category}
-                      links={catLinks}
-                      readOnly={filtering || readOnly}
-                      filtered={filtering}
-                      viewOnly={readOnly}
-                      collapsible={collapsible}
-                      collapsed={isCollapsed(category.id)}
-                      onToggleCollapse={() => toggleCollapsed(category.id)}
-                      indicator={indicator}
-                      cardDropEdge={cardTarget?.kind === 'card' && cardTarget.categoryId === category.id ? cardTarget.position : null}
-                      wasDragging={wasDragging}
-                      onManage={(c) => setManagingId(c.id)}
-                      onEditLink={setEditingLink}
-                    />
-                  ))}
-                  {/* 列の下の空いているところ: カードを落とすと、この列のいちばん下へ */}
-                  <ColumnEnd column={i} disabled={filtering || readOnly} marked={cardTarget?.kind === 'end' && cardTarget.column === i} />
-                </div>
-              ))}
-            </div>
-
-            <DragOverlay dropAnimation={null}>
-              {activeLink && (
-                <div className="flex w-64 items-center gap-2.5 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 shadow-lg shadow-black/40">
-                  <ResourceIcon link={activeLink} />
-                  <span className="truncate">{activeLink.title}</span>
-                </div>
+          <div ref={containerRef} className="p-4">
+            <CardBoard
+              cards={cards}
+              columnCount={columnCount}
+              gap={COLUMN_GAP}
+              disabled={filtering || readOnly}
+              onMove={(places) => void arrangeCategories(places)}
+              renderCard={({ item: { category, links: catLinks } }, card) => (
+                <CategoryWidget
+                  category={category}
+                  links={catLinks}
+                  readOnly={filtering || readOnly}
+                  filtered={filtering}
+                  viewOnly={readOnly}
+                  collapsible={collapsible}
+                  collapsed={isCollapsed(category.id)}
+                  onToggleCollapse={() => toggleCollapsed(category.id)}
+                  indicator={indicator}
+                  dragHandle={filtering || readOnly ? undefined : card.dragHandle}
+                  dragging={card.isDragging}
+                  wasDragging={wasDragging}
+                  onManage={(c) => setManagingId(c.id)}
+                  onEditLink={setEditingLink}
+                />
               )}
-              {activeCategory && (
+              renderOverlay={({ item: { category } }) => (
                 <div className="w-64 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-semibold text-neutral-100 shadow-lg shadow-black/40">
-                  {activeCategory.name}
+                  {category.name}
                 </div>
               )}
-            </DragOverlay>
-          </DndContext>
+              dnd={{
+                collisionDetection: collision,
+                onDragStart: handleDragStart,
+                onDragMove: computeTarget,
+                onDragOver: computeTarget,
+                onDragEnd: (e) => void handleDragEnd(e),
+                onDragCancel: resetDrag,
+                overlay: activeLink && (
+                  <div className="flex w-64 items-center gap-2.5 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 shadow-lg shadow-black/40">
+                    <ResourceIcon link={activeLink} />
+                    <span className="truncate">{activeLink.title}</span>
+                  </div>
+                ),
+              }}
+            />
+          </div>
           </>
         )}
       </div>
@@ -624,20 +562,6 @@ function Shelf({
 
       {pasteImagesAnywhere && !readOnly && <PasteAnywhere categories={sortedCategories} rememberKey={collapseKey} />}
     </div>
-    </div>
-  )
-}
-
-/** 列の下の空いているところ（カードを落とすと、その列のいちばん下へ入る） */
-function ColumnEnd({ column, disabled, marked }: { column: number; disabled: boolean; marked: boolean }) {
-  const drop = useDroppable({
-    id: columnDropId(column),
-    data: { kind: 'column', categoryId: '', column } satisfies DropData,
-    disabled,
-  })
-  return (
-    <div ref={drop.setNodeRef} className="relative min-h-16 flex-1" data-testid="column-end">
-      {marked && <div aria-hidden="true" data-testid="card-drop-line" className="pointer-events-none absolute inset-x-1 -top-2.5 h-1 rounded-full bg-accent-500" />}
     </div>
   )
 }
