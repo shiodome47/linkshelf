@@ -1,7 +1,7 @@
 // linkshelf の入り口。外から使えるものは、ここから出す。
 
 /** 部品のバージョン */
-export const VERSION = '0.7.0'
+export const VERSION = '0.8.0'
 
 import './style.css'
 
@@ -34,6 +34,10 @@ export {
   type LinkSortMode,
 } from './store'
 export { LinkShelfProvider, useLinkShelf, useLinkShelfStoreApi, type LinkShelfProviderProps } from './context'
+
+// カードを段組みに並べ、ドラッグで動かす画面を作る道具（棚と同じ仕組み。自分の画面を作るとき用）
+export { layoutCards, moveCard, flattenCards, fitsColumns, type CardLike, type CardDrop, type CardPlace } from './layout'
+export { useColumnCount, useDragSensors, dropPosition, pointerPosition, type DragPointerEvent } from './board'
 
 // 判定などの道具
 export { isSafeUrl, safeExternalUrl, openExternal, isSameOrigin } from './utils/url'

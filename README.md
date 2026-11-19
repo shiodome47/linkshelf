@@ -233,6 +233,42 @@ URL のパスが `.jpg` `.jpeg` `.png` `.webp` `.gif` で終わるリンクは�
 
 サーバー側の処理の例は [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) にあります（Vercel の関数）。内部ネットワークを覗かれないための対策が入っているので、使うときは削らないでください。
 
+### 自分の画面を作る道具（カードの段組みとドラッグ）
+
+棚と同じ「カードを段組みに並べ、ドラッグで好きな列・位置へ動かす」画面を、自分のアプリで一から作るときに使える道具です。`<LinkShelf>` を使わなくても、これだけ取り出して使えます（ドラッグは [@dnd-kit](https://dndkit.com/)）。
+
+| 道具 | すること |
+|---|---|
+| `layoutCards(cards, 列の数)` | カードを列に並べる。動かしたカードは置いた列・順番のとおり、まだ動かしていないカードはいちばん短い列へ詰める |
+| `moveCard(cards, 列の数, 動かすid, 落とす先)` | 動かしたあとの、全カードの列と順番を返す（それを保存する）。落とす先は「あるカードの上・下」か「列のいちばん下」 |
+| `flattenCards(cards)` | 1 列で見せるときの順（左上から右へ、段ごとに読む順） |
+| `useColumnCount({ minWidth, gap })` | 要素の幅から列の数を決める（幅が変わると数え直す）。返した ref を外側の要素に付ける |
+| `useDragSensors()` | ドラッグの始め方（マウスは 5px 動かすと、スマホは長押し 0.25 秒で） |
+| `dropPosition(event, overRect)` | 相手の上・下どちらに落とすか。**指（マウス）の位置**で決める（背の高いカードでも、短いカードの上に置ける） |
+
+カードは `{ id, order, column?, size }` の形で渡します（`size` は高さの目安。行の数など）。`moveCard` が返した `column` と `order` を保存しておけば、次から同じ並びになります。
+
+```tsx
+const [ref, columnCount] = useColumnCount({ minWidth: 280, gap: 12 })
+const columns = layoutCards(cards, columnCount)
+const sensors = useDragSensors()
+
+<DndContext
+  sensors={sensors}
+  onDragEnd={(e) => {
+    if (!e.over) return
+    const drop = { kind: 'card' as const, id: String(e.over.id), position: dropPosition(e, e.over.rect) }
+    save(moveCard(cards, columnCount, String(e.active.id), drop))
+  }}
+>
+  <div ref={ref} style={{ display: 'flex', gap: 12 }}>
+    {columns.map((col, i) => (
+      <div key={i} style={{ flex: 1 }}>{col.map((c) => <Card key={c.id} card={c} />)}</div>
+    ))}
+  </div>
+</DndContext>
+```
+
 ### 色を合わせる
 
 色は CSS の変数で決まっています。上書きすると、アプリの色に合わせられます。
@@ -379,6 +415,19 @@ Links open in a new tab by default. `sameOriginInSameTab` opens same-origin URLs
 
 Browsers cannot read other sites directly (CORS), so fetching titles needs a server. Pass a `fetchTitle` function that calls your endpoint.
 [`examples/web/api/title.ts`](https://github.com/shiodome47/linkshelf/blob/main/examples/web/api/title.ts) is an example Vercel function with SSRF protections (address checks, redirect checks, size and time limits). Keep them if you reuse it.
+
+### Building your own board
+
+The layout and drag logic behind the shelf is exported, so you can build your own card board (cards in columns, drag to any column and position) without `<LinkShelf>` (drag uses [@dnd-kit](https://dndkit.com/)):
+
+- `layoutCards(cards, columnCount)` places cards into columns: moved cards keep their saved column and order, others fill the shortest column.
+- `moveCard(cards, columnCount, dragId, drop)` returns every card's new `column` and `order` (save them). `drop` is `{ kind: 'card', id, position: 'before' | 'after' }` or `{ kind: 'end', column }`.
+- `flattenCards(cards)` gives the single-column reading order.
+- `useColumnCount({ minWidth, gap })` returns `[ref, count]` from the element width.
+- `useDragSensors()` gives the shelf's sensors (mouse: 5px, touch: 250 ms long press).
+- `dropPosition(event, overRect)` decides before/after from the **pointer position**, so tall cards can be dropped above short ones.
+
+Cards are `{ id, order, column?, size }` (`size` is a height estimate, such as a row count).
 
 ### Theming
 

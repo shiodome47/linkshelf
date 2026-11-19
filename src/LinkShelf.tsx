@@ -1,12 +1,8 @@
 import {
   DndContext,
   DragOverlay,
-  MouseSensor,
-  TouchSensor,
   pointerWithin,
   useDroppable,
-  useSensor,
-  useSensors,
   type CollisionDetection,
   type DragEndEvent,
   type DragMoveEvent,
@@ -38,6 +34,7 @@ import type { LinkShelfStorage } from './storage/types'
 import { groupLinksByCategory, type FetchTitle } from './store'
 import { categoryColorClass } from './categoryColors'
 import type { Category, Link } from './types'
+import { dropPosition, useColumnCount, useDragSensors } from './board'
 import { LocaleProvider, MESSAGES, useMessages, type LinkShelfLocale } from './i18n'
 import { OptionsProvider, type LoadImage, type UploadImage } from './options'
 import { PasteAnywhere } from './components/PasteAnywhere'
@@ -261,23 +258,7 @@ function Shelf({
   }, [sortedCategories, linksByCategory, query, favoritesOnly])
 
   // ─── 段組み（列数は画面幅から決め、カードを低い列から順に詰める） ───
-  const [columnCount, setColumnCount] = useState(1)
-  const observerRef = useRef<ResizeObserver | null>(null)
-  const containerRef = useCallback((el: HTMLDivElement | null) => {
-    observerRef.current?.disconnect()
-    observerRef.current = null
-    if (!el) return
-    const update = () => {
-      const width = el.clientWidth
-      setColumnCount(Math.max(1, Math.floor((width + COLUMN_GAP) / (MIN_COLUMN_WIDTH + COLUMN_GAP))))
-    }
-    update()
-    // ResizeObserver の無い環境（古いブラウザやテスト）では、最初の幅だけで決める
-    if (typeof ResizeObserver === 'undefined') return
-    observerRef.current = new ResizeObserver(update)
-    observerRef.current.observe(el)
-  }, [])
-  useEffect(() => () => observerRef.current?.disconnect(), [])
+  const [containerRef, columnCount] = useColumnCount({ minWidth: MIN_COLUMN_WIDTH, gap: COLUMN_GAP })
 
   // ドラッグで並べた列（何列目の何番目か）を覚えていれば、そのとおりに並べる（layout.ts）
   const columns = useMemo(
@@ -303,10 +284,7 @@ function Shelf({
   )
 
   // ─── ドラッグ＆ドロップ ────────────────────────────────────
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-  )
+  const sensors = useDragSensors()
   const [active, setActive] = useState<LinkDragData | CardDragData | null>(null)
   const [indicator, setIndicator] = useState<LinkDropIndicator>(null)
   const [cardTarget, setCardTarget] = useState<CardDropIndicator>(null)
@@ -347,10 +325,8 @@ function Shelf({
         setCardTarget(null)
         return
       }
-      // 持っているカードの真ん中が、相手のカードの上半分なら上、下半分なら下へ
-      const rect = a.rect.current.translated
-      const center = rect ? rect.top + rect.height / 2 : 0
-      const position = center < over.rect.top + over.rect.height / 2 ? 'before' : 'after'
+      // 指（マウス）が相手のカードの上半分なら上、下半分なら下へ
+      const position = dropPosition(event, over.rect)
       setCardTarget({ kind: 'card', categoryId: drop.categoryId, position })
       return
     }
@@ -359,9 +335,7 @@ function Shelf({
         setIndicator(null)
         return
       }
-      const rect = a.rect.current.translated
-      const center = rect ? rect.top + rect.height / 2 : 0
-      const position = center < over.rect.top + over.rect.height / 2 ? 'before' : 'after'
+      const position = dropPosition(event, over.rect)
       setIndicator({ kind: 'link', linkId: drop.linkId, position })
     } else {
       setIndicator({ kind: 'list', categoryId: drop.categoryId })
