@@ -170,6 +170,30 @@ describe('画像を部品の中で見る（viewImages）', () => {
     await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test/1'))
   })
 
+  it('アプリが描き直されて loadImage が作り直されても、読み直さない（画像がチラつかない）', async () => {
+    const storage = withImage()
+    const calls: string[] = []
+    // アプリでよくある書き方: 描くたびに新しい関数を渡す（同期の知らせなどで、アプリはときどき描き直される）
+    const make = () => async (url: string) => {
+      calls.push(url)
+      return new Blob(['x'], { type: 'image/jpeg' })
+    }
+    const { rerender } = render(<LinkShelf storage={storage} viewImages loadImage={make()} jumpBar="never" />)
+    fireEvent.click((await screen.findByText('ポスター')).closest('a')!)
+    const dialog = await screen.findByRole('dialog', { name: 'ポスター' })
+    expect(await within(dialog).findByTestId('image-viewer-img')).toHaveAttribute('src', 'blob:test/1')
+
+    for (let i = 0; i < 3; i++) {
+      rerender(<LinkShelf storage={storage} viewImages loadImage={make()} jumpBar="never" />)
+      // 消えて「読み込み中」にならず、同じ画像のまま
+      expect(within(dialog).getByTestId('image-viewer-img')).toHaveAttribute('src', 'blob:test/1')
+    }
+    await act(async () => {})
+    expect(calls).toHaveLength(1)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+    expect(within(dialog).getByTestId('image-viewer-img')).toHaveAttribute('src', 'blob:test/1')
+  })
+
   it('読めなかったら、そう伝える', async () => {
     render(<LinkShelf storage={withImage()} viewImages loadImage={() => Promise.reject(new Error(''))} jumpBar="never" />)
     fireEvent.click((await screen.findByText('ポスター')).closest('a')!)
