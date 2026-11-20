@@ -193,6 +193,7 @@ const myStorage: LinkShelfStorage = {
 
 - 受け付けるのは JPEG・PNG・WebP。失敗したら（エラーを投げたら）、短いエラー文を出し、リンクは足しません。
 - 合言葉の要る画像は `loadImage` で読み方を渡します。`Blob` を返すと、部品が表示用の URL を作り、閉じたときに片づけます。
+- `loadImage` は下のように props に直接書いて（描くたびに新しい関数になって）もかまいません。部品が読み直すのは、開いた画像が変わったときだけです（0.9.2 から。それより前は、アプリが描き直されるたびに読み直し、画像がチラついていました）。
 
 ```tsx
 <LinkShelf viewImages loadImage={async (url) => (await fetch(url, { headers: { Authorization: `Bearer ${token}` } })).blob()} />
@@ -482,7 +483,7 @@ Data is saved in the browser (IndexedDB) by default. Styles only apply inside `.
 
 **Phones.** The category bar sticks below `--ls-sticky-top` (set it to your fixed header's height).
 
-**Images.** Your `uploadImage` stores the file and returns its URL; the shelf adds it as a link. JPEG, PNG and WebP are accepted; throw to show a short error. `imageMaxSide={2000}` shrinks large photos first, `pasteImagesAnywhere` handles pastes outside cards, and `viewImages` opens images in a dialog with the link's `description` as an editable note (Ctrl/⌘-click still opens a new tab). For private images return a `Blob` from `loadImage`; the object URL is created and revoked for you.
+**Images.** Your `uploadImage` stores the file and returns its URL; the shelf adds it as a link. JPEG, PNG and WebP are accepted; throw to show a short error. `imageMaxSide={2000}` shrinks large photos first, `pasteImagesAnywhere` handles pastes outside cards, and `viewImages` opens images in a dialog with the link's `description` as an editable note (Ctrl/⌘-click still opens a new tab). For private images return a `Blob` from `loadImage`; the object URL is created and revoked for you. An inline `loadImage` is fine: the image is loaded again only when the opened image changes (since 0.9.2).
 
 **Links** open in a new tab by default; `javascript:` and other unsafe URLs are never opened.
 

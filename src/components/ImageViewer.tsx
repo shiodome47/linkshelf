@@ -1,5 +1,5 @@
 import { ExternalLink, Pencil } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from './ui/Button'
 import { Dialog } from './ui/Dialog'
 import { Textarea } from './ui/Textarea'
@@ -23,16 +23,26 @@ export function ImageViewer({ link, readOnly, onClose }: { link: Link; readOnly:
   const [memo, setMemo] = useState(link.description)
   const [saving, setSaving] = useState(false)
 
+  // loadImage は、アプリが描き直されるたびに新しい関数になることが多い（props に直接書いたときなど）。
+  // それで読み直すと、そのたびに画像が消えて「読み込み中」になり、チラついて見える。
+  // いちばん新しい関数を覚えておき、読み直すのは開いた画像（url）が変わったときだけにする
+  const loadRef = useRef(loadImage)
   useEffect(() => {
+    loadRef.current = loadImage
+  })
+  const hasLoader = !!loadImage
+
+  useEffect(() => {
+    const load = loadRef.current
     let alive = true
     let made = ''
     setSrc('')
     setError('')
-    if (!loadImage) {
+    if (!load) {
       setSrc(link.url)
       return
     }
-    loadImage(link.url, link)
+    load(link.url, link)
       .then((r) => {
         const u = typeof r === 'string' ? r : URL.createObjectURL(r)
         if (typeof r !== 'string') made = u
@@ -44,8 +54,8 @@ export function ImageViewer({ link, readOnly, onClose }: { link: Link; readOnly:
       alive = false
       if (made) URL.revokeObjectURL(made)
     }
-    // 開いた画像（url）が変わったときだけ読み直す
-  }, [link.url, loadImage])
+    // 開いた画像（url）が変わったとき（と、loadImage を渡す・渡さないが変わったとき）だけ読み直す
+  }, [link.url, hasLoader])
 
   const save = async () => {
     setSaving(true)
